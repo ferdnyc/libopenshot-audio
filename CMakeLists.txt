@@ -66,7 +66,7 @@ message(STATUS "SO/API/ABI Version: ${SO_VERSION}")
 message(STATUS "Determining Version Number - done")
 
 ################### SETUP PROJECT ###################
-project(libopenshot-audio LANGUAGES CXX
+project(libopenshot-audio LANGUAGES C CXX
         VERSION ${MAJOR_VERSION}.${MINOR_VERSION}.${BUILD_VERSION})
 
 message("
@@ -79,9 +79,6 @@ Generating build files for OpenShot
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF)
-
-#### Enable C Language
-ENABLE_LANGUAGE(C)
 
 # Enable stack-unwinding support in c objects on gcc-based platforms.
 # Failing to do so will cause your program to be terminated when a png
@@ -155,7 +152,6 @@ ELSE (WIN32)
 			include_directories(${ZLIB_INCLUDE_DIR} ${ALSA_INCLUDE_DIR})
 			ADD_DEFINITIONS(-DLINUX)
 			SET(JUCE_PLATFORM_SPECIFIC_LIBRARIES ${ZLIB_LIBRARIES} ${ALSA_LIBRARIES})
-			SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -std=c++11")
 		ENDIF(APPLE)
 	ENDIF(UNIX)
 ENDIF(WIN32)
@@ -167,24 +163,22 @@ FILE(GLOB JUCE_SOURCES
 # Disable RPATH
 SET(CMAKE_MACOSX_RPATH 0)
 
-if (BUILD_STATIC)
-	ADD_LIBRARY(openshot-audio STATIC)
-else()
-	ADD_LIBRARY(openshot-audio SHARED)
+# STATIC vs. SHARED will be determined by CMake
+ADD_LIBRARY(openshot-audio)
 
-	# Set SONAME for shared library
-	set_target_properties(openshot-audio
-		PROPERTIES
-		SOVERSION ${SO_VERSION} )
-endif()
-
+# Set SONAME and other properties for library
 set_target_properties(openshot-audio
 	PROPERTIES
 	VERSION ${PROJECT_VERSION}
+	SOVERSION ${SO_VERSION}
 	CXX_STANDARD 11
 	CXX_STANDARD_REQUIRED YES
 	POSITION_INDEPENDENT_CODE 1 # Needed for static lib to link w/shared
 	INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/lib" )
+	
+target_compile_definitions(openshot-audio PRIVATE
+	$<$<CONFIG:Debug>:DONT_AUTOLINK_TO_JUCE_LIBRARY>
+)
 
 target_sources(openshot-audio PRIVATE ${JUCE_SOURCES} )
 
