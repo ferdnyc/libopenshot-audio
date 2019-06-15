@@ -183,6 +183,7 @@ set_target_properties(openshot-audio
 	VERSION ${PROJECT_VERSION}
 	CXX_STANDARD 11
 	CXX_STANDARD_REQUIRED YES
+	POSITION_INDEPENDENT_CODE 1 # Needed for static lib to link w/shared
 	INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/lib" )
 
 target_sources(openshot-audio PRIVATE ${JUCE_SOURCES} )
