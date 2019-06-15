@@ -167,25 +167,32 @@ FILE(GLOB JUCE_SOURCES
 # Disable RPATH
 SET(CMAKE_MACOSX_RPATH 0)
 
-ADD_LIBRARY(openshot-audio SHARED
-		${JUCE_SOURCES}
-		)
+if (BUILD_STATIC)
+	ADD_LIBRARY(openshot-audio STATIC)
+else()
+	ADD_LIBRARY(openshot-audio SHARED)
+
+	# Set SONAME for shared library
+	set_target_properties(openshot-audio
+		PROPERTIES
+		SOVERSION ${SO_VERSION} )
+endif()
+
+set_target_properties(openshot-audio
+	PROPERTIES
+	VERSION ${PROJECT_VERSION}
+	CXX_STANDARD 11
+	CXX_STANDARD_REQUIRED YES
+	INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/lib" )
+
+target_sources(openshot-audio PRIVATE ${JUCE_SOURCES} )
 
 # Include header directories
 target_include_directories(openshot-audio PUBLIC
-		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode>
-		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/modules>
-		$<INSTALL_INTERFACE:include/libopenshot-audio>
-		)
-
-# Set SONAME and other library properties
-set_target_properties(openshot-audio
-		PROPERTIES
-		VERSION ${PROJECT_VERSION}
-		SOVERSION ${SO_VERSION}
-		CXX_STANDARD 11
-		CXX_STANDARD_REQUIRED YES
-		INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/lib")
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode>
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/modules>
+	$<INSTALL_INTERFACE:include/libopenshot-audio>
+)
 
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 find_package(Threads REQUIRED)
