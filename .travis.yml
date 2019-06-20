@@ -20,7 +20,7 @@ before_install:
   - pwd
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew update ; fi
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew install swig; fi
-  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew install unittestcpp; fi
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew install unittest-cpp; fi
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew install doxygen; fi
 
 script:
