@@ -25,10 +25,10 @@ before_install:
 
 script:
   - mkdir -p build; cd build;
-  - cmake -DCMAKE_BUILD_TYPE:STRING="Debug" ../
+  - cmake -DCMAKE_INSTALL_PREFIX:PATH="$TRAVIS_OS_NAME-x64" -DCMAKE_BUILD_TYPE:STRING="Debug" ../
   - make VERBOSE=1
   - make doc
-  - make install DESTDIR=dist/
+  - make install 
 
 notifications:
   email: false
