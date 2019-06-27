@@ -3,12 +3,14 @@ pull_requests:
   do_not_increment_build_number: true
 image: Visual Studio 2017
 before_build:
-- cmd: set PATH=C:\MSYS64\mingw64\bin;c:\msys64\mingw64\lib;%PATH:C:\Program Files (x86)\Git\bin;=%
+- cmd: >-
+    set PATH=C:\MSYS64\mingw64\bin;c:\msys64\mingw64\lib;%PATH:C:\Program Files (x86)\Git\bin;=%
 build_script:
- mkdir build
- cd build
-- cmd: cmake  -DCMAKE_TOOLCHAIN_FILE=c:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_INSTALL_PREFIX:PATH=install-x64 -G "MinGW Makefiles"  ../
- cmd: mingw32-make VERBOSE=1
- cmd: mingw32-make install
+- cmd: >-
+    mkdir build
+    cd build
+    cmake  -DCMAKE_TOOLCHAIN_FILE=c:\tools\vcpkg\scripts\buildsystems\vcpkg.cmake -DCMAKE_INSTALL_PREFIX:PATH=install-x64 -G "MinGW Makefiles"  ../
+    mingw32-make VERBOSE=1
+    mingw32-make install
 test: off
 deploy: off
