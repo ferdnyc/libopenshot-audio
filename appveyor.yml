@@ -7,7 +7,7 @@ before_build:
 build_script:
  mkdir build
  cd build
- cmd: cmake  -DCMAKE_TOOLCHAIN_FILE=c:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_INSTALL_PREFIX:PATH=install-x64 -G "MinGW Makefiles"  ../
+- cmd: cmake  -DCMAKE_TOOLCHAIN_FILE=c:/tools/vcpkg/scripts/buildsystems/vcpkg.cmake -DCMAKE_INSTALL_PREFIX:PATH=install-x64 -G "MinGW Makefiles"  ../
  cmd: mingw32-make VERBOSE=1
  cmd: mingw32-make install
 test: off
