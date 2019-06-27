@@ -8,10 +8,16 @@ before_build:
 build_script:
 - cmd: >-
     set PATH=%PATH:C:\Program Files (x86)\Git\bin;=%
+
     mkdir build
+
     cd build
+
     cmake  -DCMAKE_TOOLCHAIN_FILE=c:\tools\vcpkg\scripts\buildsystems\vcpkg.cmake -DCMAKE_INSTALL_PREFIX:PATH=install-x64 -G "MinGW Makefiles"  ../
+
     mingw32-make VERBOSE=1
+
     mingw32-make install
+
 test: off
 deploy: off
