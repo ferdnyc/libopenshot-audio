@@ -4,7 +4,10 @@ pull_requests:
 image: Visual Studio 2017
 before_build:
 - cmd: >-
-    set PATH=C:\MSYS64\mingw64\bin;c:\msys64\mingw64\lib;%PATH%
+        set PATH=C:\MSYS64\mingw64\bin;c:\msys64\mingw64\lib;c:\msys64\usr\bin;%PATH%
+
+        bash -lc "pacman --noconfirm -S mingw-w64-x86_64-toolchain base-devel"
+
 build_script:
 - cmd: >-
     set PATH=%PATH:C:\Program Files (x86)\Git\bin;=%
