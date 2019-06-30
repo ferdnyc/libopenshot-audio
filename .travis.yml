@@ -26,7 +26,7 @@ before_install:
     fi
   - |
     if [ "$TRAVIS_OS_NAME" = "windows" ]; then
-      powershell -executionpolicy bypass -command 'choco install msys2; taskkill -IM "gpg-agent.exe" -F; RefreshEnv.cmd; Set-Alias bash "C:\\tools\\msys64\\usr\\bin\\bash.exe"; bash -lc "pacman --noconfirm -Syuu; pacman --needed --noconfirm -S mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-make mingw-w64-x86_64-headers-git mingw-w64-x86_64-swig mingw-w64-doxygen"'
+      powershell -executionpolicy bypass -command 'choco install msys2; taskkill -IM "gpg-agent.exe" -F; RefreshEnv.cmd; Set-Alias bash "C:\\tools\\msys64\\usr\\bin\\bash.exe"; bash -lc "pacman -Syuu --noconfirm; pacman -S --needed --noconfirm mingw-w64-x86_64-gcc mingw-w64-x86_64-cmake mingw-w64-x86_64-make mingw-w64-x86_64-headers-git mingw-w64-x86_64-swig mingw-w64-x86_64-doxygen"'
     fi
 
 script:
