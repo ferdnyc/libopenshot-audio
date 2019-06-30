@@ -32,19 +32,20 @@ before_install:
     fi
   - |
     if [ "$TRAVIS_OS_NAME" = "windows" ]; then
-      powershell -executionpolicy bypass -command 'choco install msys2; taskkill -IM "gpg-agent.exe" -F; RefreshEnv.cmd; Set-Alias bash "C:\tools\msys64\usr\bin\bash.exe"; bash -lc "pacman --noconfirm -Syu; pacman --noconfirm -S mingw-w64-x86_64-toolchain mingw-w64-x86_64_swig"'
+      powershell -executionpolicy bypass -command 'choco install msys2; taskkill -IM "gpg-agent.exe" -F; RefreshEnv.cmd; Set-Alias bash "C:\\tools\\msys64\\usr\\bin\\bash.exe"; bash -lc "pacman --noconfirm -Syu; pacman --noconfirm -S mingw-w64-x86_64-toolchain mingw-w64-x86_64_swig"'
     fi
 
 script:
   - mkdir -p build
-  - if [ $TRAVIS_OS_NAME = 'windows' ]; then
-      powershell -executionpolicy bypass -command 'Set-Alias bash "C:\tools\msys64\usr\bin\bash.exe"; bash -lc "cd ./build; cmake -DCMAKE_INSTALL_PREFIX:PATH=$TRAVIS_OS_NAME-x64 -DCMAKE_BUILD_TYPE:STRING=Debug -G \"MinGW Makefiles\" ../; make VERBOSE=1; make doc; make install"';
+  - |
+    if [ $TRAVIS_OS_NAME = 'windows' ]; then
+      powershell -executionpolicy bypass -command 'Set-Alias bash "C:\\tools\\msys64\\usr\\bin\\bash.exe"; bash -lc "cd ./build; cmake -DCMAKE_INSTALL_PREFIX:PATH=$TRAVIS_OS_NAME-x64 -DCMAKE_BUILD_TYPE:STRING=Debug -G \"MinGW Makefiles\" ../; make VERBOSE=1; make doc; make install"'
     else 
-      cd build;
-      cmake -DCMAKE_INSTALL_PREFIX:PATH="$TRAVIS_OS_NAME-x64" -DCMAKE_BUILD_TYPE:STRING="Debug" $GENTYPE ../;
-      make VERBOSE=1;
-      make doc;
-      make install;
+      cd build
+      cmake -DCMAKE_INSTALL_PREFIX:PATH="$TRAVIS_OS_NAME-x64" -DCMAKE_BUILD_TYPE:STRING="Debug" $GENTYPE ../
+      make VERBOSE=1
+      make doc
+      make install
     fi
 
 notifications:
