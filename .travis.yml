@@ -21,30 +21,30 @@ addons:
 cache:
   branch: bash
   directories:
-    - /c/msys64
+    - /c/tools/msys64
+    - /usr/local/Cellar
 
 before_install:
   - pwd
-  - |
-    if [ "$TRAVIS_OS_NAME" = "osx" ]; then
+  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then
       brew update
       brew install swig unittest-cpp doxygen
     fi
-  - |
-    if [ "$TRAVIS_OS_NAME" = "windows" ]; then
-      choco install msys2 --params "/InstallDir:C:\\msys64"
-      #choco install swig doxygen.install
-      pacman -Sy mingw-w64-x86_64-toolchain
-      pacman -S mingw-w64-x86_64-swig
+  - if [ "$TRAVIS_OS_NAME" = "windows" ]; then
+      powershell -executionpolicy bypass -command 'choco install msys2; taskkill -IM "gpg-agent.exe" -F; RefreshEnv.cmd; Set-Alias bash "C:\tools\msys64\usr\bin\bash.exe"; bash -lc "pacman --noconfirm -Syu; pacman --noconfirm -S mingw-w64-x86_64-toolchain mingw-w64-x86_64_swig"';
     fi
-    #  - if [ "$TRAVIS_OS_NAME" = "windows" ]; then choco install unittest; fi
 
 script:
-  - mkdir -p build; cd build;
-  - cmake -DCMAKE_INSTALL_PREFIX:PATH="$TRAVIS_OS_NAME-x64" -DCMAKE_BUILD_TYPE:STRING="Debug" $GENTYPE ../
-  - make VERBOSE=1
-  - make doc
-  - make install 
+  - mkdir -p build
+  - if [ $TRAVIS_OS_NAME = 'windows' ]; then
+      powershell -executionpolicy bypass -command 'Set-Alias bash "C:\tools\msys64\usr\bin\bash.exe"; bash -lc "cd ./build; cmake -DCMAKE_INSTALL_PREFIX:PATH=$TRAVIS_OS_NAME-x64 -DCMAKE_BUILD_TYPE:STRING=Debug -G \"MinGW Makefiles\" ../; make VERBOSE=1; make doc; make install"'
+    else 
+      cd build;
+      cmake -DCMAKE_INSTALL_PREFIX:PATH="$TRAVIS_OS_NAME-x64" -DCMAKE_BUILD_TYPE:STRING="Debug" $GENTYPE ../
+      make VERBOSE=1
+      make doc
+      make install 
+    fi
 
 notifications:
   email: false
