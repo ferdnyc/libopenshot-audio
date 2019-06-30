@@ -5,6 +5,7 @@ matrix:
     - os: linux
       dist: xenial
     - os: osx
+    - os: windows
 
 addons:
   apt:
@@ -22,6 +23,9 @@ before_install:
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew install swig; fi
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew install unittest-cpp; fi
   - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew install doxygen; fi
+  - if [ "$TRAVIS_OS_NAME" = "windows" ]; then choco install swig; fi
+  - if [ "$TRAVIS_OS_NAME" = "windows" ]; then choco install doxygen.install; fi
+    #  - if [ "$TRAVIS_OS_NAME" = "windows" ]; then choco install unittest; fi
 
 script:
   - mkdir -p build; cd build;
