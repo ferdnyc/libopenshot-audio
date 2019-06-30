@@ -17,12 +17,6 @@ addons:
       - doxygen
       - graphviz
 
-cache:
-  branch: bash
-  directories:
-    - /c/tools/msys64
-    - /usr/local/Cellar
-
 before_install:
   - pwd
   - |
