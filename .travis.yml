@@ -4,36 +4,28 @@ matrix:
   include:
     - os: linux
       dist: xenial
+      addons:
+        apt:
+          packages:
+          - cmake
+          - swig
+          - libasound2-dev
+          - libunittest++-dev
+          - doxygen
+          - graphviz
+
     - os: osx
-
-addons:
-  apt:
-    packages:
-      - cmake
-      - swig
-      - libasound2-dev
-      - libunittest++-dev
-      - doxygen
-      - graphviz
-
-before_install:
-  - pwd
-  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew update ; fi
-  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew install swig; fi
-  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew install unittest-cpp; fi
-  - if [ "$TRAVIS_OS_NAME" = "osx" ]; then brew install doxygen; fi
+      before_install:
+        - brew --display-times install swig
+        - brew --display-times install unittest-cpp
+        - brew --display-times install doxygen
 
 script:
   - mkdir -p build; cd build;
   - cmake -DCMAKE_INSTALL_PREFIX:PATH="$TRAVIS_OS_NAME-x64" -DCMAKE_BUILD_TYPE:STRING="Debug" ../
   - make VERBOSE=1
   - make doc
-  - make install 
+  - make install
 
 notifications:
   email: false
-
-env:
-  global:
-  - TRAVIS_LIBOPENSHOT=TEST
-  - LANG="en_US.UTF-8"
