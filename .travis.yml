@@ -16,9 +16,9 @@ matrix:
 
     - os: osx
       before_install:
-        - brew --display-times install swig
-        - brew --display-times install unittest-cpp
-        - brew --display-times install doxygen
+        - brew install --display-times swig
+        - brew install --display-times unittest-cpp
+        - brew install --display-times doxygen
 
 script:
   - mkdir -p build; cd build;
