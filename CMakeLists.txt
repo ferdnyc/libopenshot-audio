@@ -99,7 +99,7 @@ IF (WIN32)
 		ADD_DEFINITIONS(-DJUCE_ASIO=0)
 	ENDIF (ASIO_SDK_DIR)
 
-	ADD_DEFINITIONS(-DDONT_AUTOLINK_TO_JUCE_LIBRARY)
+	ADD_DEFINITIONS(-DJUCE_DONT_AUTOLINK_TO_WIN32_LIBRARIES)
 
 	SET(JUCE_PLATFORM_SPECIFIC_LIBRARIES
 		advapi32.lib
@@ -213,13 +213,46 @@ INSTALL(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/modules/
 INSTALL(TARGETS openshot-audio
 	LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 	ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-	FRAMEWORK DESTINATION Library/Frameworks
-	COMPONENT library )
-
-################### DOCUMENTATION ###################
-# Find Doxygen (used for documentation)
-include(cmake/Modules/UseDoxygen.cmake)
+	RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR} )
 
 # Install manpage
 INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/doc/openshot-audio-test-sound.1
 	DESTINATION ${CMAKE_INSTALL_MANDIR}/man1 )
+
+########### DOCUMENTATION ##########
+# We need Python to process the source for Doxygen...
+find_package(PythonInterp 3)
+
+if(PYTHONINTERP_FOUND)
+	# Pre-process the sources to fix documentation formatting
+	add_custom_target(process-source-files
+		COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/doc/process_source_files.py ${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/modules "docs"
+		COMMENT "Formatting source code for documentation"
+		VERBATIM )
+
+	# Processed docs are removed on "make clean"
+	set_property(DIRECTORY APPEND PROPERTY
+		ADDITIONAL_MAKE_CLEAN_FILES "docs" )
+
+	# Find Doxygen (used for documentation)
+	include(cmake/Modules/UseDoxygen.cmake)
+
+	# Make sure process-source comes before Doxygen targets,
+	# assuming UseDoxygen found the tools and created them
+	if(TARGET doc)
+		add_dependencies(doc process-source-files)
+	endif()
+	if(TARGET doxygen)
+		add_dependencies(doxygen process-source-files)
+	endif()
+	
+	# Install docs, if the user builds them with `make doc`
+	install(CODE "MESSAGE(\"Checking for documentation files to install...\")")
+	install(CODE "MESSAGE(\"(Compile with 'make doc' command, requires Python3 and Doxygen)\")")
+	
+	install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/doc/html/
+		DESTINATION ${CMAKE_INSTALL_DOCDIR}
+		MESSAGE_NEVER # Don't spew about file copies
+		OPTIONAL )    # No error if the docs aren't found
+		
+endif()

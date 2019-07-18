@@ -3,7 +3,7 @@ delivering high quality audio editing and audio playback solutions to the world.
 
 ## Build Status
 
-[![Build Status](https://img.shields.io/travis/OpenShot/libopenshot-audio/develop.svg?label=libopenshot-audio)](https://travis-ci.org/OpenShot/libopenshot-audio)
+[![Build Status](https://img.shields.io/travis/ferdnyc/libopenshot-audio/develop.svg?label=libopenshot-audio)](https://travis-ci.org/ferdnyc/libopenshot-audio)
 
 ## Features
 
