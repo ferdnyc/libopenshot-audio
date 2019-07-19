@@ -15,10 +15,13 @@ matrix:
           - graphviz
 
     - os: osx
-      before_install:
-        - brew install --display-times swig
-        - brew install --display-times unittest-cpp
-        - brew install --display-times doxygen
+      addons:
+        homebrew:
+          update: true
+          packages:
+          - unittest-cpp
+          - swig
+          - doxygen
 
 script:
   - mkdir -p build; cd build;
