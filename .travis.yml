@@ -4,30 +4,30 @@ matrix:
   include:
     - os: linux
       dist: xenial
-      addons:
-        apt:
-          packages:
-          - cmake
-          - swig
-          - libasound2-dev
-          - libunittest++-dev
-          - doxygen
-          - graphviz
-
     - os: osx
-      addons:
-        homebrew:
-          update: true
-          packages:
-          - unittest-cpp
-          - swig
-          - doxygen
+
+addons:
+  apt:
+    packages:
+      - cmake
+      - swig
+      - libasound2-dev
+      - libunittest++-dev
+      - doxygen
+      - graphviz
+
+  homebrew:
+    update: true
+    packages:
+      - gcc
+      - unittest-cpp
+      - swig
 
 script:
   - mkdir -p build; cd build;
   - cmake -DCMAKE_INSTALL_PREFIX:PATH="$TRAVIS_OS_NAME-x64" -DCMAKE_BUILD_TYPE:STRING="Debug" ../
   - make VERBOSE=1
-  - make doc
+  - if [ $TRAVIS_OS_NAME = linux ]; then make doc; fi
   - make install
 
 notifications:
