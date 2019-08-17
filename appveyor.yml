@@ -4,6 +4,7 @@ pull_requests:
 image: Visual Studio 2017
 build:
     publish_nuget: true
+    publish_nuget_symbols: true
 before_build:
 - cmd: >-
         set PATH=C:\MSYS64\mingw64\bin;c:\msys64\mingw64\lib;%PATH%
@@ -22,7 +23,7 @@ build_script:
 test: off
 deploy:
   - provider: NuGet
-    symbol_server: ${ACCOUNT_NUGET_FEED_URL}/api/v2/package
+    symbol_server: $(ACCOUNT_NUGET_FEED_URL)/api/v2/package
     api_key:
-      secure: ${SECURE_NUGET_API_KEY}
+      secure: $(SECURE_NUGET_API_KEY)
     artifact: /.*\.symbols\.nupkg/
