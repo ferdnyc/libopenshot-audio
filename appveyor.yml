@@ -2,6 +2,8 @@ version: '{build}'
 pull_requests:
   do_not_increment_build_number: true
 image: Visual Studio 2017
+build:
+    publish_nuget: true
 before_build:
 - cmd: >-
         set PATH=C:\MSYS64\mingw64\bin;c:\msys64\mingw64\lib;%PATH%
