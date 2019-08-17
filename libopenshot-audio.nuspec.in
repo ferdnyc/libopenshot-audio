@@ -1,8 +1,8 @@
 <?xml version="1.0"?>
 <package >
   <metadata>
-    <id>libopenshot-audio</id>
-    <version>0.1.8</version>
+    <id>@PROJECT_NAME@</id>
+    <version>@PROJECT_VERSION_FULL@</version>
     <authors>jonathan@openshot.org and others</authors>
     <owners>jonathan@openshot.org</owners>
     <projectUrl>https://github.com/OpenShot/libopenshot-audio/</projectUrl>
@@ -11,4 +11,7 @@
     <description>OpenShot Audio Library (libopenshot-audio) is a free, open-source project that enables high-quality editing and playback of audio, and is based on the amazing JUCE library.</description>
     <copyright>Copyright (c) 2013-2019 OpenShot Studios, LLC</copyright>
   </metadata>
+  <files>
+    <file src="install-x64/**" target="" />
+  </files>
 </package>

@@ -101,6 +101,8 @@ configure_file(include/AppConfig.h.in include/AppConfig.h @ONLY)
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/
         DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libopenshot-audio )
 
+configure_file(libopenshot-audio.nuspec.in libopenshot-audio.nuspec @ONLY)
+
 # Juce requires either DEBUG or NDEBUG to be defined on MacOS.
 # -DNDEBUG is set by cmake for all release configs, so add
 # -DDEBUG for debug builds. We'll do this for all OSes, even
