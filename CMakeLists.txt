@@ -42,6 +42,7 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
 ################ PROJECT VERSION ####################
 set(PROJECT_VERSION_FULL "0.1.8-dev1")
 set(PROJECT_SO_VERSION 6)
+set(HEX_VERSION_OVERRIDE "0x108") # For CMake < 3.13
 
 # Remove the dash and anything following, to get the #.#.# version for project()
 STRING(REGEX REPLACE "\-.*$" "" VERSION_NUM "${PROJECT_VERSION_FULL}")
@@ -55,11 +56,20 @@ STRING(REGEX REPLACE "\-.*$" "" VERSION_NUM "${PROJECT_VERSION_FULL}")
 # PROJECT_VERSION_PATCH, libopenshot-audio_VERSION_PATCH
 PROJECT(libopenshot-audio LANGUAGES C CXX VERSION ${VERSION_NUM})
 
-message("
-Generating build files for OpenShot
-  Building ${PROJECT_NAME} (version ${PROJECT_VERSION})
-  SO/API/ABI Version: ${PROJECT_SO_VERSION}
-")
+# JuceHeader.h needs a hexadecimal version number for the project
+if(CMAKE_VERSION VERSION_LESS 3.13)
+	set(PROJECT_VERSION_HEX ${HEX_VERSION_OVERRIDE}) # Ugly hardcoding
+else()
+	math(EXPR PROJECT_VERSION_HEX 
+		"(${PROJECT_VERSION_MAJOR} << 16) + \
+		(${PROJECT_VERSION_MINOR} << 8) + \
+		(${PROJECT_VERSION_PATCH})" OUTPUT_FORMAT HEXADECIMAL )
+endif()
+
+message("\
+Generating build files for ${PROJECT_NAME} \
+version ${PROJECT_VERSION_FULL} (${PROJECT_VERSION_HEX})" )
+message("SO/API/ABI Version: ${PROJECT_SO_VERSION}" )
 
 
 # Define install paths according to system conventions
@@ -67,6 +77,12 @@ Generating build files for OpenShot
 #      in order to properly configure CMAKE_INSTALL_LIBDIR path
 include(GNUInstallDirs)
 
+########## Configure headers ##############
+configure_file(include/JuceHeader.h.in include/JuceHeader.h @ONLY)
+configure_file(include/AppConfig.h.in include/AppConfig.h @ONLY)
+# We'll want those installed later
+install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/
+        DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libopenshot-audio )
 
 # Juce requires either DEBUG or NDEBUG to be defined on MacOS.
 # -DNDEBUG is set by cmake for all release configs, so add
@@ -99,26 +115,19 @@ IF (WIN32)
 		ADD_DEFINITIONS(-DJUCE_ASIO=0)
 	ENDIF (ASIO_SDK_DIR)
 
+	# Tell Visual Studio not to automatically link system DLLs
 	ADD_DEFINITIONS(-DJUCE_DONT_AUTOLINK_TO_WIN32_LIBRARIES)
 
+	# Order here can be important!
+	# For example, winmm.lib must come before kernel32.lib (if linked)
+	# or older 32-bit windows versions will have linking issues for
+	# certain entry points
 	SET(JUCE_PLATFORM_SPECIFIC_LIBRARIES
-		advapi32.lib
-		comdlg32.lib
-		gdi32.lib
-		GlU32.lib
-		Imm32.dll
-		kernel32.lib
-		ole32.lib
-		OpenGL32.lib
-		rpcrt4.lib
-		shell32.lib
-		Shlwapi.dll
-		user32.lib
-		vfw32.lib
-		version.lib
-		winmm.lib
-		wininet.lib
-		ws2_32.lib
+                winmm.lib
+                ws2_32.lib
+                wininet.lib
+                version.lib
+                Shlwapi.dll
 		)
 endif()
 
@@ -161,10 +170,9 @@ ADD_LIBRARY(openshot-audio SHARED ${JUCE_SOURCES} )
 
 # Include header directories
 target_include_directories(openshot-audio PUBLIC
-		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode>
-		$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/modules>
-		$<INSTALL_INTERFACE:include/libopenshot-audio>
-		)
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/modules>
+	$<INSTALL_INTERFACE:include/libopenshot-audio> )
 
 # Set SONAME and other library properties
 set_target_properties(openshot-audio
@@ -200,14 +208,9 @@ add_subdirectory(src)
 #################### INSTALLATION #####################
 
 # Install Header Files
-INSTALL(FILES
-	${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/JuceHeader.h
-	${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/AppConfig.h
-	DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libopenshot-audio )
-
 INSTALL(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/modules/
-		DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libopenshot-audio
-		FILES_MATCHING PATTERN "*.h" )
+	DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libopenshot-audio
+	FILES_MATCHING PATTERN "*.h" )
 
 # Install library
 INSTALL(TARGETS openshot-audio
@@ -251,7 +254,7 @@ if(PYTHONINTERP_FOUND)
 	install(CODE "MESSAGE(\"(Compile with 'make doc' command, requires Python3 and Doxygen)\")")
 	
 	install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/doc/html/
-		DESTINATION ${CMAKE_INSTALL_DOCDIR}
+		DESTINATION ${CMAKE_INSTALL_DOCDIR}/API
 		MESSAGE_NEVER # Don't spew about file copies
 		OPTIONAL )    # No error if the docs aren't found
 		
