@@ -19,7 +19,7 @@ build_script:
 
     cd build
 
-    cmake  -DCMAKE_INSTALL_PREFIX:PATH=install-x64 -G "MinGW Makefiles"  ../
+    cmake  -DCMAKE_INSTALL_PREFIX:PATH=install-x64 -G "MinGW Makefiles"  ..
 
     mingw32-make VERBOSE=1
 

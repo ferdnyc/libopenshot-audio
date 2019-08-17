@@ -13,6 +13,8 @@
     <tags>native</tags>
   </metadata>
   <files>
-    <file src="install-x64/**" target="" />
+    <file src="install-x64\bin\*.dll" target="lib" />
+    <file src="install-x64\lib\*.*" target="lib" />
+    <file src="install-x64\include\**" target = "include" />
   </files>
 </package>
