@@ -25,7 +25,9 @@ build_script:
 
     mingw32-make install
 
-    appveyor PushArtifact libopenshot-audio.nupkg
+    nuget pack
+
+    appveyor PushArtifact libopenshot-audio*.nupkg
 
 test: off
 deploy:
