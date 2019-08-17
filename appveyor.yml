@@ -27,7 +27,7 @@ build_script:
 
     nuget pack
 
-    appveyor PushArtifact libopenshot-audio*.nupkg
+    appveyor PushArtifact libopenshot-audio.0.1.8-dev1.nupkg
 
 test: off
 deploy:
