@@ -45,7 +45,7 @@ set(PROJECT_SO_VERSION 7)
 set(HEX_VERSION_OVERRIDE "0x109") # For CMake < 3.13
 
 # Remove the dash and anything following, to get the #.#.# version for project()
-STRING(REGEX REPLACE "\-.*$" "" VERSION_NUM "${PROJECT_VERSION_FULL}")
+string(REGEX REPLACE "\-.*$" "" VERSION_NUM "${PROJECT_VERSION_FULL}")
 
 ################### SETUP PROJECT ###################
 # This will define the following variables
@@ -77,6 +77,16 @@ message("SO/API/ABI Version: ${PROJECT_SO_VERSION}" )
 #      in order to properly configure CMAKE_INSTALL_LIBDIR path
 include(GNUInstallDirs)
 
+# Make cmake find the msvc redistributables on Win32
+set(CMAKE_INSTALL_SYSTEM_RUNTIME_LIBS_SKIP FALSE)
+set(CMAKE_INSTALL_UCRT_LIBRARIES TRUE)
+set(CMAKE_INSTALL_SYSTEM_RUNTIME_DESTINATION ${CMAKE_INSTALL_BINDIR})
+include(InstallRequiredSystemLibraries)
+
+# Tools for EXPORT processing
+include(CMakePackageConfigHelpers)
+
+
 ########## Configure headers ##############
 configure_file(include/JuceHeader.h.in include/JuceHeader.h @ONLY)
 configure_file(include/AppConfig.h.in include/AppConfig.h @ONLY)
@@ -95,53 +105,13 @@ if(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
 endif()
 
 
-# Enable stack-unwinding support in c objects on gcc-based platforms.
-# Failing to do so will cause your program to be terminated when a png
-# or a jpeg exception is thrown on linux or macosx.
-IF (CMAKE_COMPILER_IS_GNUCC)
-	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fexceptions")
-ENDIF(CMAKE_COMPILER_IS_GNUCC)
-
-IF (WIN32)
-	# Find the base directory of the ASIO SDK (if any)
-	find_path(ASIO_SDK_DIR iasiodrv.h PATHS $ENV{ASIO_SDK_DIR} )
-
-	IF (ASIO_SDK_DIR)
-		MESSAGE("FOUND ASIO_SDK_DIR: ${ASIO_SDK_DIR}")
-		ADD_DEFINITIONS(-DJUCE_ASIO=1)
-		INCLUDE_DIRECTORIES(${ASIO_SDK_DIR})
-	ELSE(ASIO_SDK_DIR)
-		MESSAGE("ASIO_SDK_DIR NOT FOUND")
-		ADD_DEFINITIONS(-DJUCE_ASIO=0)
-	ENDIF (ASIO_SDK_DIR)
-
-	# Tell Visual Studio not to automatically link system DLLs
-	ADD_DEFINITIONS(-DJUCE_DONT_AUTOLINK_TO_WIN32_LIBRARIES)
-
-	# Order here can be important!
-	# For example, winmm.lib must come before kernel32.lib (if linked)
-	# or older 32-bit windows versions will have linking issues for
-	# certain entry points
-	SET(JUCE_PLATFORM_SPECIFIC_LIBRARIES
-                winmm.lib
-                ws2_32.lib
-                wininet.lib
-                version.lib
-                Shlwapi.dll
-		)
-endif()
-
-if(UNIX AND APPLE)
-	SET(JUCE_PLATFORM_SPECIFIC_DIR build/macosx/platform_specific_code)
-	SET(JUCE_PLATFORM_SPECIFIC_LIBRARIES "-framework Carbon -framework Cocoa -framework CoreFoundation -framework CoreAudio -framework CoreMidi -framework IOKit -framework AGL -framework AudioToolbox -framework QuartzCore -lobjc -framework Accelerate")
-	SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -flax-vector-conversions")
-endif()
+########## Library source files ############
 
 # Default extension for source files
 if(UNIX AND APPLE)
-  SET(SOURCE_EXTENSION "mm")
+  set(SOURCE_EXTENSION "mm")
 else ()
-  SET(SOURCE_EXTENSION "cpp")
+  set(SOURCE_EXTENSION "cpp")
 endif()
 
 # List of modules to build
@@ -158,13 +128,16 @@ foreach(j_module IN LISTS JUCE_MODULES)
 		JuceLibraryCode/include_juce_${j_module}.${SOURCE_EXTENSION} )
 endforeach()
 
+
+############ OpenShotAudio library ###############
+
 add_library(openshot-audio SHARED ${JUCE_SOURCES} )
 
 # Include header directories
 target_include_directories(openshot-audio PUBLIC
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
 	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/modules>
-	$<INSTALL_INTERFACE:include/libopenshot-audio> )
+	$<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/libopenshot-audio> )
 
 # Set SONAME and other library properties
 set_target_properties(openshot-audio
@@ -177,32 +150,90 @@ set_target_properties(openshot-audio
 		MACOSX_RPATH OFF
 		INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/lib")
 
+# Enable stack-unwinding support in c objects on gcc-based platforms.
+# Failing to do so will cause your program to be terminated when a png
+# or a jpeg exception is thrown on linux or macosx.
+target_compile_options(openshot-audio PUBLIC "$<$<CXX_COMPILER_ID:GNU>:-fexceptions>")
+
+
+##################### DEPENDENCIES #########################
+
 # Threading library -- uses IMPORTED target Threads::Threads (since CMake 3.1)
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
 target_link_libraries(openshot-audio PUBLIC Threads::Threads)
 
+# ZLIB -- uses IMPORTED target ZLIB::ZLIB which has existed since CMake 3.1
+find_package(ZLIB REQUIRED)
+target_link_libraries(openshot-audio PUBLIC ZLIB::ZLIB)
+
+# Dynamic loader
+target_link_libraries(openshot-audio PUBLIC ${CMAKE_DL_LIBS})
+
 # ALSA (Linux only)
 if(UNIX AND NOT APPLE)
   find_package(ALSA REQUIRED)
   if (ALSA_FOUND AND NOT TARGET ALSA::ALSA) # CMake < 3.12
-    add_library(ALSA::ALSA INTERFACE IMPORTED)
+    add_library(ALSA::ALSA UNKNOWN IMPORTED)
     set_target_properties(ALSA::ALSA PROPERTIES
-      INTERFACE_INCLUDE_DIRECTORIES ${ALSA_INCLUDE_DIR}
-      INTERFACE_LINK_LIBRARIES ${ALSA_LIBRARIES})
+      INTERFACE_INCLUDE_DIRECTORIES "${ALSA_INCLUDE_DIR}"
+      IMPORTED_LOCATION "${ALSA_LIBRARIES}")
   endif()
   target_compile_definitions(openshot-audio PUBLIC LINUX)
   target_link_libraries(openshot-audio PUBLIC ALSA::ALSA)
 endif()
 
-# ZLIB -- uses IMPORTED target ZLIB::ZLIB which has existed since CMake 3.1
-find_package(ZLIB REQUIRED)
-target_link_libraries(openshot-audio PUBLIC ZLIB::ZLIB)
+# Windows-specific libraries and other dependencies
+if (WIN32)
+	# Find the base directory of the ASIO SDK (if any)
+	find_path(ASIO_SDK_DIR iasiodrv.h PATHS "$ENV{ASIO_SDK_DIR}" )
 
-target_link_libraries(openshot-audio PUBLIC
-		${CMAKE_DL_LIBS}
-		${JUCE_PLATFORM_SPECIFIC_LIBRARIES} )
+	if (ASIO_SDK_DIR)
+		message(STATUS "Found ASIO SDK in: ${ASIO_SDK_DIR}")
+    add_target(ASIO::SDK UNKNOWN IMPORTED)
+    set_target_properties(ASIO::SDK PROPERTIES
+      INTERFACE_COMPILE_DEFINITIONS "JUCE_ASIO=1"
+    INTERFACE_INCLUDE_DIRECTORIES "${ASIO_SDK_DIR}")
+    target_link_libraries(openshot-audio PRIVATE ASIO::SDK)
+	else()
+		message(STATUS "ASIO SDK not found")
+		target_compile_definitions(openshot-audio PRIVATE "JUCE_ASIO=0")
+  endif()
+
+	# Tell Visual Studio not to automatically link system DLLs
+	target_compile_definitions(openshot-audio PRIVATE JUCE_DONT_AUTOLINK_TO_WIN32_LIBRARIES)
+
+	# Order here can be important!
+	# For example, winmm.lib must come before kernel32.lib (if linked)
+	# or older 32-bit windows versions will have linking issues for
+	# certain entry points
+	target_link_libraries(openshot-audio PUBLIC
+                winmm.lib
+                ws2_32.lib
+                wininet.lib
+                version.lib
+                Shlwapi.dll
+		)
+endif()
+
+# MacOS-specific libraries and compile options
+if(UNIX AND APPLE)
+  target_link_libraries(openshot-audio PUBLIC
+    "-framework Carbon"
+    "-framework Cocoa"
+    "-framework CoreFoundation"
+    "-framework CoreAudio"
+    "-framework CoreMidi"
+    "-framework IOKit"
+    "-framework AGL"
+    "-framework AudioToolbox"
+    "-framework QuartzCore"
+    objc
+    "-framework Accelerate")
+	target_compile_options(openshot-audio PUBLIC -flax-vector-conversions)
+endif()
+
 
 # PROCESS SUB-DIRECTORIES
 add_subdirectory(src)
@@ -211,60 +242,89 @@ add_subdirectory(src)
 #################### INSTALLATION #####################
 
 # Install Header Files
-INSTALL(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/modules/
+install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/modules/
 	DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libopenshot-audio
 	FILES_MATCHING PATTERN "*.h" )
 
 # Install library
-INSTALL(TARGETS openshot-audio
+install(TARGETS openshot-audio EXPORT OpenShotAudioTargets
 	LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
 	ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-	RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR} )
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} )
+#INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libopenshot-audio )
 
 # Install manpage
-INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/doc/openshot-audio-test-sound.1
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/doc/openshot-audio-test-sound.1
 	DESTINATION ${CMAKE_INSTALL_MANDIR}/man1 )
+
+
+################ EXPORT TARGETS ########################
+
+# Create export file in build dir
+export(EXPORT OpenShotAudioTargets NAMESPACE OpenShot::)
+
+# Install exported targets to install prefix
+install(EXPORT OpenShotAudioTargets NAMESPACE OpenShot::
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/OpenShotAudio
+  EXPORT_LINK_INTERFACE_LIBRARIES)
+
+configure_package_config_file(
+  OpenShotAudioConfig.cmake.in
+  OpenShotAudioConfig.cmake
+  INSTALL_DESTINATION "${CMAKE_INSTALL_LIBDIR}/cmake/OpenShotAudio")
+
+write_basic_package_version_file(
+  ${CMAKE_CURRENT_BINARY_DIR}/OpenShotAudioConfigVersion.cmake
+  VERSION ${PROJECT_VERSION}
+  COMPATIBILITY AnyNewerVersion)
+
+# Install export configuration to install prefix
+install(FILES
+  ${CMAKE_CURRENT_BINARY_DIR}/OpenShotAudioConfigVersion.cmake
+  ${CMAKE_CURRENT_BINARY_DIR}/OpenShotAudioConfig.cmake
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/OpenShotAudio)
+
 
 ########### DOCUMENTATION ##########
 # We need Python to process the source for Doxygen...
 find_package(PythonInterp 3)
 
 if(PYTHONINTERP_FOUND)
-    # Pre-process the sources to fix documentation formatting
-    add_custom_target(process-source-files
-        COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/doc/process_source_files.py ${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/modules "docs"
-        COMMENT "Formatting source code for documentation"
-        VERBATIM )
+  # Pre-process the sources to fix documentation formatting
+  add_custom_target(process-source-files
+    COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/doc/process_source_files.py ${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/modules "docs"
+    COMMENT "Formatting source code for documentation"
+    VERBATIM )
 
-    # Processed docs are removed on "make clean"
-    set_property(DIRECTORY
-        APPEND PROPERTY
-        ADDITIONAL_MAKE_CLEAN_FILES "docs" )
+  # Processed docs are removed on "make clean"
+  set_property(DIRECTORY
+    APPEND PROPERTY
+    ADDITIONAL_MAKE_CLEAN_FILES "docs" )
 
-    # Find Doxygen (used for documentation)
-    include(cmake/Modules/UseDoxygen.cmake)
+  # Find Doxygen (used for documentation)
+  include(cmake/Modules/UseDoxygen.cmake)
 
-    # Make sure process-source comes before Doxygen targets,
-    # assuming UseDoxygen found the tools and created them
-    if(TARGET doc)
-        add_dependencies(doc process-source-files)
-    endif()
-    if(TARGET doxygen)
-        add_dependencies(doxygen process-source-files)
-    endif()
+  # Make sure process-source comes before Doxygen targets,
+  # assuming UseDoxygen found the tools and created them
+  if(TARGET doc)
+    add_dependencies(doc process-source-files)
+  endif()
+  if(TARGET doxygen)
+    add_dependencies(doxygen process-source-files)
+  endif()
 endif()
 
 # Doxygen was found
 if (TARGET doc)
-    message(STATUS "Doxygen found, documentation target enabled")
-    message("\nTo compile documentation in doc/html, run: 'make doc'")
+  message(STATUS "Doxygen found, documentation target enabled")
+  message("\nTo compile documentation in doc/html, run: 'make doc'")
 
-    # Install docs, if the user builds them with `make doc`
-    install(CODE "MESSAGE(\"Checking for documentation files to install...\")")
-    install(CODE "MESSAGE(\"(Compile with 'make doc' command, requires Python3 and Doxygen)\")")
+  # Install docs, if the user builds them with `make doc`
+  install(CODE "message(\"Checking for documentation files to install...\")")
+  install(CODE "message(\"(Compile with 'make doc' command, requires Python3 and Doxygen)\")")
 
-    install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/doc/html/
-        DESTINATION ${CMAKE_INSTALL_DOCDIR}/API
-        MESSAGE_NEVER # Don't spew about file copies
-        OPTIONAL )    # No error if the docs aren't found
+  install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/doc/html/
+    DESTINATION ${CMAKE_INSTALL_DOCDIR}/API
+    MESSAGE_NEVER # Don't spew about file copies
+    OPTIONAL )    # No error if the docs aren't found
 endif()
