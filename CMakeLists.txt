@@ -24,7 +24,7 @@
 # along with OpenShot Audio Library. If not, see <http://www.gnu.org/licenses/>.
 ################################################################################
 
-cmake_minimum_required(VERSION 3.1...3.14 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.2...3.14 FATAL_ERROR)
 
 message("\
 -----------------------------------------------------------------
@@ -50,11 +50,11 @@ string(REGEX REPLACE "\-.*$" "" VERSION_NUM "${PROJECT_VERSION_FULL}")
 ################### SETUP PROJECT ###################
 # This will define the following variables
 # PROJECT_NAME
-# PROJECT_VERSION, libopenshot-audio_VERSION
-# PROJECT_VERSION_MAJOR, libopenshot-audio_VERSION_MAJOR
-# PROJECT_VERSION_MINOR, libopenshot-audio_VERSION_MINOR
-# PROJECT_VERSION_PATCH, libopenshot-audio_VERSION_PATCH
-PROJECT(libopenshot-audio LANGUAGES C CXX VERSION ${VERSION_NUM})
+# PROJECT_VERSION, OpenShotAudio_VERSION
+# PROJECT_VERSION_MAJOR, OpenShotAudio_VERSION_MAJOR
+# PROJECT_VERSION_MINOR, OpenShotAudio_VERSION_MINOR
+# PROJECT_VERSION_PATCH, OpenShotAudio_VERSION_PATCH
+project(OpenShotAudio LANGUAGES C CXX VERSION ${VERSION_NUM})
 
 # JuceHeader.h needs a hexadecimal version number for the project
 if(CMAKE_VERSION VERSION_LESS 3.13)
