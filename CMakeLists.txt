@@ -162,14 +162,14 @@ target_compile_options(openshot-audio PUBLIC "$<$<CXX_COMPILER_ID:GNU>:-fexcepti
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
-target_link_libraries(openshot-audio PUBLIC Threads::Threads)
+target_link_libraries(openshot-audio PRIVATE Threads::Threads)
 
 # ZLIB -- uses IMPORTED target ZLIB::ZLIB which has existed since CMake 3.1
 find_package(ZLIB REQUIRED)
 target_link_libraries(openshot-audio PUBLIC ZLIB::ZLIB)
 
 # Dynamic loader
-target_link_libraries(openshot-audio PUBLIC ${CMAKE_DL_LIBS})
+target_link_libraries(openshot-audio PRIVATE ${CMAKE_DL_LIBS})
 
 # ALSA (Linux only)
 if(UNIX AND NOT APPLE)
@@ -208,7 +208,7 @@ if (WIN32)
 	# For example, winmm.lib must come before kernel32.lib (if linked)
 	# or older 32-bit windows versions will have linking issues for
 	# certain entry points
-	target_link_libraries(openshot-audio PUBLIC
+	target_link_libraries(openshot-audio PRIVATE
                 winmm.lib
                 ws2_32.lib
                 wininet.lib
@@ -219,7 +219,7 @@ endif()
 
 # MacOS-specific libraries and compile options
 if(UNIX AND APPLE)
-  target_link_libraries(openshot-audio PUBLIC
+  target_link_libraries(openshot-audio PRIVATE
     "-framework Carbon"
     "-framework Cocoa"
     "-framework CoreFoundation"
