@@ -13,5 +13,10 @@ if (UNIX AND NOT APPLE)
   endif()
 endif()
 
+include(FeatureSummary)
+set_package_properties(OpenShotAudio PROPERTIES
+  URL "https://github.com/OpenShot/libopenshot-audio"
+  DESCRIPTION "OpenShot Audio Library")
+
 include(${CMAKE_CURRENT_LIST_DIR}/OpenShotAudioTargets.cmake)
 
