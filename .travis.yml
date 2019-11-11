@@ -25,14 +25,12 @@ addons:
     packages:
       - cmake
       - libasound2-dev
-      - libunittest++-dev
       - doxygen
       - graphviz
   homebrew:
     update: true
     packages:
     - cmake
-    - unittestcpp
 
 script:
   - mkdir -p build; cd build;
