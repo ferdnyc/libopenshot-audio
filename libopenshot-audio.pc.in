@@ -1,0 +1,13 @@
+
+libname=openshot-audio
+name=lib${libname}
+prefix=@CMAKE_INSTALL_PREFIX@
+includedir=${prefix}/@CMAKE_INSTALL_INCLUDEDIR@/${name}
+libdir=${prefix}/@CMAKE_INSTALL_LIBDIR@
+
+Name: ${name}
+Description: @PROJECT_DESCRIPTION@
+Version: @PROJECT_VERSION@
+Requires: @PKG_CONFIG_REQUIRES@
+Libs: -L${libdir} -l${libname}
+Cflags: -I${includedir}
