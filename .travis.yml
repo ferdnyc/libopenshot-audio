@@ -1,6 +1,5 @@
 language: cpp
 
-
 env:
   global:
   - TRAVIS_LIBOPENSHOT=TEST
@@ -27,6 +26,7 @@ addons:
       - libasound2-dev
       - doxygen
       - graphviz
+
   homebrew:
     update: true
     packages:
