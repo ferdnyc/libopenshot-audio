@@ -33,6 +33,3 @@ set_target_properties(openshot-audio-test-sound PROPERTIES
 	CXX_STANDARD_REQUIRED YES
 	CXX_EXTENSIONS OFF
 	MACOSX_RPATH OFF )
-
-# Install Test Executable
-INSTALL(TARGETS openshot-audio-test-sound DESTINATION ${CMAKE_INSTALL_BINDIR})
