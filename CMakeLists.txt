@@ -40,9 +40,8 @@ For more information, please visit <http://www.openshot.org/>.
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
 
 ################ PROJECT VERSION ####################
-set(PROJECT_VERSION_FULL "0.1.8-dev1")
-set(PROJECT_SO_VERSION 6)
-set(HEX_VERSION_OVERRIDE "0x108") # For CMake < 3.13
+set(PROJECT_VERSION_FULL "0.2.0-dev2")
+set(PROJECT_SO_VERSION 7)
 
 # Remove the dash and anything following, to get the #.#.# version for project()
 STRING(REGEX REPLACE "\-.*$" "" VERSION_NUM "${PROJECT_VERSION_FULL}")
@@ -57,13 +56,31 @@ STRING(REGEX REPLACE "\-.*$" "" VERSION_NUM "${PROJECT_VERSION_FULL}")
 PROJECT(libopenshot-audio LANGUAGES C CXX VERSION ${VERSION_NUM})
 
 # JuceHeader.h needs a hexadecimal version number for the project
-if(CMAKE_VERSION VERSION_LESS 3.13)
-	set(PROJECT_VERSION_HEX ${HEX_VERSION_OVERRIDE}) # Ugly hardcoding
+if(CMAKE_VERSION VERSION_GREATER 3.13)
+  math(EXPR PROJECT_VERSION_HEX
+    "(${PROJECT_VERSION_MAJOR} << 16) + \
+     (${PROJECT_VERSION_MINOR} << 8) + \
+     (${PROJECT_VERSION_PATCH})" OUTPUT_FORMAT HEXADECIMAL )
 else()
-	math(EXPR PROJECT_VERSION_HEX 
-		"(${PROJECT_VERSION_MAJOR} << 16) + \
-		(${PROJECT_VERSION_MINOR} << 8) + \
-		(${PROJECT_VERSION_PATCH})" OUTPUT_FORMAT HEXADECIMAL )
+  # Compile and run a C++ program to generate the hex version
+  set(HEX_COMPILE_DEFINITIONS
+    -DVERSION_MAJOR=${PROJECT_VERSION_MAJOR}
+    -DVERSION_MINOR=${PROJECT_VERSION_MINOR}
+    -DVERSION_PATCH=${PROJECT_VERSION_PATCH}
+  )
+  try_run(HEX_VERSION_RUN HEX_VERSION_BUILD
+    ${CMAKE_CURRENT_BINARY_DIR}/hex_version
+    ${PROJECT_SOURCE_DIR}/src/hex_version.cpp
+    COMPILE_DEFINITIONS ${HEX_COMPILE_DEFINITIONS}
+    RUN_OUTPUT_VARIABLE HEX_VERSION_OUTPUT
+  )
+  if (NOT HEX_VERSION_BUILD)
+    message(ERROR "Failed to compile hex-version utility!")
+  elseif(HEX_VERSION_RUN STREQUAL FAILED_TO_RUN)
+    message(ERROR "Could not execute hex-version utility!")
+  else()
+    set(PROJECT_VERSION_HEX ${HEX_VERSION_OUTPUT})
+  endif()
 endif()
 
 message("\
@@ -135,24 +152,16 @@ endif()
 
 if(UNIX AND APPLE)
 	SET(JUCE_PLATFORM_SPECIFIC_DIR build/macosx/platform_specific_code)
-	SET(JUCE_PLATFORM_SPECIFIC_LIBRARIES "-framework Carbon -framework Cocoa -framework CoreFoundation -framework CoreAudio -framework CoreMidi -framework IOKit -framework AGL -framework AudioToolbox -framework QuartzCore -lobjc -lz -framework Accelerate")
+	SET(JUCE_PLATFORM_SPECIFIC_LIBRARIES "-framework Carbon -framework Cocoa -framework CoreFoundation -framework CoreAudio -framework CoreMidi -framework IOKit -framework AGL -framework AudioToolbox -framework QuartzCore -lobjc -framework Accelerate")
 	SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -flax-vector-conversions")
-endif()
-
-if(UNIX AND NOT APPLE) #Linux
-	find_package(ALSA REQUIRED)
-	include_directories(${ALSA_INCLUDE_DIR})
-	ADD_DEFINITIONS(-DLINUX)
-	SET(JUCE_PLATFORM_SPECIFIC_LIBRARIES ${ALSA_LIBRARIES})
 endif()
 
 # Default extension for source files
 if(UNIX AND APPLE)
-	SET(SOURCE_EXTENSION "mm")
+  SET(SOURCE_EXTENSION "mm")
 else ()
-    SET(SOURCE_EXTENSION "cpp")
+  SET(SOURCE_EXTENSION "cpp")
 endif()
-
 
 # List of modules to build
 set(JUCE_MODULES
@@ -168,7 +177,7 @@ foreach(j_module IN LISTS JUCE_MODULES)
 		JuceLibraryCode/include_juce_${j_module}.${SOURCE_EXTENSION} )
 endforeach()
 
-ADD_LIBRARY(openshot-audio SHARED ${JUCE_SOURCES} )
+add_library(openshot-audio SHARED ${JUCE_SOURCES} )
 
 # Include header directories
 target_include_directories(openshot-audio PUBLIC
@@ -189,15 +198,28 @@ set_target_properties(openshot-audio
 		MACOSX_RPATH OFF
 		INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/lib")
 
-# Find threading library
+# Threading library -- uses IMPORTED target Threads::Threads (since CMake 3.1)
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
+set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
-target_link_libraries(openshot-audio PUBLIC ${CMAKE_THREAD_LIBS_INIT})
+target_link_libraries(openshot-audio PUBLIC Threads::Threads)
 
-# ZLIB
+# ALSA (Linux only)
+if(UNIX AND NOT APPLE)
+  find_package(ALSA REQUIRED)
+  if (ALSA_FOUND AND NOT TARGET ALSA::ALSA) # CMake < 3.12
+    add_library(ALSA::ALSA INTERFACE IMPORTED)
+    set_target_properties(ALSA::ALSA PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES ${ALSA_INCLUDE_DIR}
+      INTERFACE_LINK_LIBRARIES ${ALSA_LIBRARIES})
+  endif()
+  target_compile_definitions(openshot-audio PUBLIC LINUX)
+  target_link_libraries(openshot-audio PUBLIC ALSA::ALSA)
+endif()
+
+# ZLIB -- uses IMPORTED target ZLIB::ZLIB which has existed since CMake 3.1
 find_package(ZLIB REQUIRED)
-include_directories(${ZLIB_INCLUDE_DIR})
-target_link_libraries(openshot-audio PUBLIC ${ZLIB_LIBRARIES})
+target_link_libraries(openshot-audio PUBLIC ZLIB::ZLIB)
 
 target_link_libraries(openshot-audio PUBLIC
 		${CMAKE_DL_LIBS}
@@ -229,35 +251,41 @@ INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/doc/openshot-audio-test-sound.1
 find_package(PythonInterp 3)
 
 if(PYTHONINTERP_FOUND)
-	# Pre-process the sources to fix documentation formatting
-	add_custom_target(process-source-files
-		COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/doc/process_source_files.py ${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/modules "docs"
-		COMMENT "Formatting source code for documentation"
-		VERBATIM )
+    # Pre-process the sources to fix documentation formatting
+    add_custom_target(process-source-files
+        COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/doc/process_source_files.py ${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/modules "docs"
+        COMMENT "Formatting source code for documentation"
+        VERBATIM )
 
-	# Processed docs are removed on "make clean"
-	set_property(DIRECTORY APPEND PROPERTY
-		ADDITIONAL_MAKE_CLEAN_FILES "docs" )
+    # Processed docs are removed on "make clean"
+    set_property(DIRECTORY
+        APPEND PROPERTY
+        ADDITIONAL_MAKE_CLEAN_FILES "docs" )
 
-	# Find Doxygen (used for documentation)
-	include(cmake/Modules/UseDoxygen.cmake)
+    # Find Doxygen (used for documentation)
+    include(cmake/Modules/UseDoxygen.cmake)
 
-	# Make sure process-source comes before Doxygen targets,
-	# assuming UseDoxygen found the tools and created them
-	if(TARGET doc)
-		add_dependencies(doc process-source-files)
-	endif()
-	if(TARGET doxygen)
-		add_dependencies(doxygen process-source-files)
-	endif()
-	
-	# Install docs, if the user builds them with `make doc`
-	install(CODE "MESSAGE(\"Checking for documentation files to install...\")")
-	install(CODE "MESSAGE(\"(Compile with 'make doc' command, requires Python3 and Doxygen)\")")
-	
-	install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/doc/html/
-		DESTINATION ${CMAKE_INSTALL_DOCDIR}/API
-		MESSAGE_NEVER # Don't spew about file copies
-		OPTIONAL )    # No error if the docs aren't found
-		
+    # Make sure process-source comes before Doxygen targets,
+    # assuming UseDoxygen found the tools and created them
+    if(TARGET doc)
+        add_dependencies(doc process-source-files)
+    endif()
+    if(TARGET doxygen)
+        add_dependencies(doxygen process-source-files)
+    endif()
+endif()
+
+# Doxygen was found
+if (TARGET doc)
+    message(STATUS "Doxygen found, documentation target enabled")
+    message("\nTo compile documentation in doc/html, run: 'make doc'")
+
+    # Install docs, if the user builds them with `make doc`
+    install(CODE "MESSAGE(\"Checking for documentation files to install...\")")
+    install(CODE "MESSAGE(\"(Compile with 'make doc' command, requires Python3 and Doxygen)\")")
+
+    install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/doc/html/
+        DESTINATION ${CMAKE_INSTALL_DOCDIR}/API
+        MESSAGE_NEVER # Don't spew about file copies
+        OPTIONAL )    # No error if the docs aren't found
 endif()
