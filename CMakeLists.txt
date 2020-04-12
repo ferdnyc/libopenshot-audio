@@ -24,7 +24,7 @@
 # along with OpenShot Audio Library. If not, see <http://www.gnu.org/licenses/>.
 ################################################################################
 
-cmake_minimum_required(VERSION 3.1...3.14 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.2...3.17 FATAL_ERROR)
 
 message("\
 -----------------------------------------------------------------
@@ -42,6 +42,13 @@ set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
 ################ PROJECT VERSION ####################
 set(PROJECT_VERSION_FULL "0.2.0-dev2")
 set(PROJECT_SO_VERSION 7)
+
+### METADATA
+set(PROJECT_AUTHOR "Jonathan Thomas and contributors")
+set(PROJECT_AUTHOR_EMAIL "jonathan@openshot.org")
+set(PROJECT_MAINTAINER "Jonathan Thomas")
+set(PROJECT_MAINTAINER_EMAIL "jonathan@openshot.org")
+set(PROJECT_URL "https://github.com/OpenShot/libopenshot/-audio")
 
 # Remove the dash and anything following, to get the #.#.# version for project()
 STRING(REGEX REPLACE "\-.*$" "" VERSION_NUM "${PROJECT_VERSION_FULL}")

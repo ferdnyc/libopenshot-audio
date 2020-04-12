@@ -1,7 +1,12 @@
-version: 0.1.9.'{build}'
+version: '0.2.0.{build}'
 pull_requests:
   do_not_increment_build_number: true
 image: Visual Studio 2017
+environment:
+  ACCOUNT_NUGET_FEED_URL:
+    secure: dWPHOB1t6jTalO2po0q8NUNzmSDmCucX8lfZCZiiF3i5Teq0Ddvj6NZWpIjHz2T48dj31xOPdW4hw5cuxpOxBoYFayLlEFcRwQqJ/iZtMyk=
+  SECURE_NUGET_API_KEY:
+    secure: AVohEJa2yMmbznF2BkcCLrg0mayv4lPzuscSFSW9pvQ=
 nuget:
   account_feed: true
   project_feed: true
@@ -31,23 +36,20 @@ build_script:
 
     nuget pack
 
-    nuget push libopenshot-audio*.nupkg -ApiKey 10t02jvk4nfyfhkot7s1184f -Source https://ci.appveyor.com/nuget/ferdnyc-906ritrmglv1/api/v2/package
+    rem nuget push libopenshot-audio*.nupkg -ApiKey ${SECURE_NUGET_API_KEY} -Source ${ACCOUNT_NUGET_FEED_URL}
 
-#   appveyor PushArtifact libopenshot-audio.1.1.8-dev1.nupkg
+    appveyor PushArtifact libopenshot-audio.0.2.0-dev2.nupkg
 
 test: off
 
 artifacts:
-  - path: /owner/ferdnyc/active
-    name: libopenshot-audio-pkg
-  - path: /owner/ferdnyc/all
-    name: libopenshot-audio-pkg
   - path: 'build\*.nupkg'
     name: libopenshot-audio-nupkg
 
-deploy:
-- provider: NuGet
-  symbol_server: $(ACCOUNT_NUGET_FEED_URL)/api/v2/package
-  api_key:
-    secure: $(SECURE_NUGET_API_KEY)
-  artifact: libopenshot-audio-nupkg
+#deploy:
+#- provider: NuGet
+#  api_key:
+#    secure: gbPd2Mk9DYcXyoURZhb2rWD7dK797HlDE34z5pv3YYNa2AqTilrFw/uoOzMhANQx
+#  username:
+#    secure: 1REhby0tYwDyTOSnedXePw==
+#  artifact: libopenshot-audio-nupkg
