@@ -36,9 +36,9 @@ build_script:
 
     nuget pack
 
-    rem nuget push libopenshot-audio*.nupkg -ApiKey ${SECURE_NUGET_API_KEY} -Source ${ACCOUNT_NUGET_FEED_URL}
+    rem nuget push org.openshot.libopenshot-audio*.nupkg -ApiKey ${SECURE_NUGET_API_KEY} -Source ${ACCOUNT_NUGET_FEED_URL}
 
-    appveyor PushArtifact libopenshot-audio.0.2.0-dev2.nupkg
+    appveyor PushArtifact org.openshot.libopenshot-audio.0.2.0-dev2.nupkg
 
 test: off
 
