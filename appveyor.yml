@@ -10,8 +10,15 @@ image:
   - Visual Studio 2017
   - macos
 
+# Remove the impossible build
+# (ends up being a redundant 64-bit run)
+matrix:
+  exclude:
+    - platform: x86
+      image: macos
 
-cache: install-cache
+# No cache on the first link in the chain
+#cache: install-cache
 
 for:
 # Windows (both)
@@ -41,7 +48,7 @@ for:
     only:
       - image: macos
   before_build:
-  - sh: brew update
+    #- sh: brew update
   build_script:
   - sh: mkdir -p build; cd build;
   - sh: cmake -DCMAKE_INSTALL_PREFIX:PATH=install-${PLATFORM} -DCMAKE_BUILD_TYPE:STRING="Debug" -DCMAKE_CXX_FLAGS_DEBUG="-Wall -Wpedantic" ../

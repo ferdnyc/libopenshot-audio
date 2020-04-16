@@ -170,16 +170,17 @@ target_include_directories(openshot-audio PUBLIC
 
 # Set SONAME and other library properties
 set_target_properties(openshot-audio
-		PROPERTIES
-		VERSION ${PROJECT_VERSION}
-		SOVERSION ${PROJECT_SO_VERSION}
-		CXX_STANDARD 11
-		CXX_STANDARD_REQUIRED YES
-		CXX_EXTENSIONS OFF
-	#	FRAMEWORK TRUE
-	#	MACOSX_FRAMEWORK_IDENTIFIER "org.openshot.libopenshot-audio"
-		MACOSX_RPATH OFF
-		INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/lib")
+  PROPERTIES
+    VERSION ${PROJECT_VERSION}
+    SOVERSION ${PROJECT_SO_VERSION}
+    CXX_STANDARD 11
+    CXX_STANDARD_REQUIRED YES
+    CXX_EXTENSIONS OFF
+    #FRAMEWORK TRUE
+    #MACOSX_FRAMEWORK_IDENTIFIER "org.openshot.libopenshot-audio"
+    MACOSX_RPATH OFF
+    INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/lib"
+)
 
 # Threading library -- uses IMPORTED target Threads::Threads (since CMake 3.1)
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
@@ -208,23 +209,13 @@ target_link_libraries(openshot-audio PUBLIC ${CMAKE_DL_LIBS})
 
 # macOS specifics
 if(UNIX AND APPLE)
-	SET(JUCE_PLATFORM_SPECIFIC_DIR build/macosx/platform_specific_code)
-	target_link_libraries(openshot-audio
-    PUBLIC
-      -framework Carbon
-      -framework Cocoa
-      -framework CoreFoundation
-      -framework CoreAudio
-      -framework CoreMidi
-      -framework IOKit
-      -framework AGL
-      -framework AudioToolbox
-      -framework QuartzCore
-      -framework Accelerate
-      -lobjc
-  )
-	target_compile_flags(openshot PUBLIC -flax-vector-conversions)
-
+  foreach(_framework
+          Carbon Cocoa CoreFoundation CoreAudio CoreMidi
+          IOKit AGL AudioToolbox QuartzCore Accelerate)
+    target_link_libraries(openshot-audio PUBLIC "-framework ${_framework}")
+  endforeach()
+  target_link_libraries(openshot-audio PUBLIC objc)
+  target_compile_options(openshot-audio PRIVATE -flax-vector-conversions)
 endif()
 
 # Windows specifics
@@ -347,4 +338,3 @@ if(UNIX AND NOT APPLE)
   set(CPACK_DEBIAN_PACKAGE_MAINTAINER ${PROJECT_MAINTAINER}) #required
 endif()
 include(CPack)
-
