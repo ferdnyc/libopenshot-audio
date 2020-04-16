@@ -1,55 +1,45 @@
 version: '0.2.0.{build}'
 pull_requests:
   do_not_increment_build_number: true
-image: Visual Studio 2017
-#environment:
-#  ACCOUNT_NUGET_FEED_URL:
-#    secure: dWPHOB1t6jTalO2po0q8NUNzmSDmCucX8lfZCZiiF3i5Teq0Ddvj6NZWpIjHz2T48dj31xOPdW4hw5cuxpOxBoYFayLlEFcRwQqJ/iZtMyk=
-#  SECURE_NUGET_API_KEY:
-#    secure: AVohEJa2yMmbznF2BkcCLrg0mayv4lPzuscSFSW9pvQ=
-#nuget:
-#  account_feed: true
-#  project_feed: true
-#  disable_publish_on_pr: true
-build:
-#  publish_nuget: true
-#  publish_nuget_symbols: true
-before_build:
-- cmd: >-
-        set PATH=C:\MSYS64\mingw64\bin;c:\msys64\mingw64\lib;%PATH%
 
-        c:\msys64\usr\bin\bash -lc "pacman --needed --noconfirm -S mingw-w64-x86_64-toolchain base-devel"
+environment:
+ matrix:
+  - platform: x64
+    image: Visual Studio 2017
+    configuration: Debug
+  - platform: x86
+    image: Visual Studio 2017
+    configuration: Debug
+  - platform: osx
+    image: macos
+    configuration: Debug
+
+before_build:
+  # Windows
+  - cmd: set PATH=C:\MSYS64\mingw64\bin;c:\msys64\mingw64\lib;%PATH%
+  - cmd: c:\msys64\usr\bin\bash -lc "pacman --needed --noconfirm -S mingw-w64-x86_64-toolchain base-devel"
+  # macOS
+  - sh: brew update
 
 build_script:
-- cmd: >-
-    set PATH=%PATH:C:\Program Files\Git\usr\bin;=%
-
-    mkdir build
-
-    cd build
-
-    cmake  -DCMAKE_INSTALL_PREFIX:PATH=install-x64 -G "MinGW Makefiles"  ..
-
-    cmake --build . -- VERBOSE=1
-
-    cmake --build . --target install -- VERBOSE=1
-
-    rem nuget pack
-
-    rem nuget push org.openshot.libopenshot-audio*.nupkg -ApiKey ${SECURE_NUGET_API_KEY} -Source ${ACCOUNT_NUGET_FEED_URL}
-
-    rem eppveyor PushArtifact org.openshot.libopenshot-audio.0.2.0-dev2.nupkg
+  # Windows
+  - cmd: set PATH=%PATH:C:\Program Files\Git\usr\bin;=%
+  - cmd: mkdir build
+  - cmd: cd build
+  - cmd: cmake  -DCMAKE_INSTALL_PREFIX:PATH=install-x64 -G "MinGW Makefiles"  ..
+  - cmd: cmake --build . -- VERBOSE=1
+  - cmd: cmake --build . --target install
+  - cmd: rem nuget pack
+  - cmd: rem nuget push org.openshot.libopenshot-audio*.nupkg -ApiKey ${SECURE_NUGET_API_KEY} -Source ${ACCOUNT_NUGET_FEED_URL}
+  - cmd: rem eppveyor PushArtifact org.openshot.libopenshot-audio.0.2.0-dev2.nupkg
+  # macOS
+  - sh: mkdir -p build; cd build;
+  - sh: cmake -DCMAKE_INSTALL_PREFIX:PATH="../cache-x64" -DCMAKE_BUILD_TYPE:STRING="Debug" -DCMAKE_CXX_FLAGS_DEBUG="-Wall -Wpedantic" ../
+  - sh: cmake --build . -- VERBOSE=1
+  - sh: cmake --build . --target install
 
 test: off
 
 #artifacts:
 #  - path: 'build\*.nupkg'
 #    name: libopenshot-audio-nupkg
-
-#deploy:
-#- provider: NuGet
-#  api_key:
-#    secure: gbPd2Mk9DYcXyoURZhb2rWD7dK797HlDE34z5pv3YYNa2AqTilrFw/uoOzMhANQx
-#  username:
-#    secure: 1REhby0tYwDyTOSnedXePw==
-#  artifact: libopenshot-audio-nupkg
