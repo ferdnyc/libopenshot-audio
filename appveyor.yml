@@ -2,39 +2,49 @@ version: '0.2.0.{build}'
 pull_requests:
   do_not_increment_build_number: true
 
-environment:
- matrix:
-  - platform: x64
-    image: Visual Studio 2017
-    configuration: Debug
-  - platform: x86
-    image: Visual Studio 2017
-    configuration: Debug
-  - platform: osx
-    image: macos
-    configuration: Debug
+platform:
+  - x64
+  - x86
 
-before_build:
-  # Windows
-  - cmd: set PATH=C:\MSYS64\mingw64\bin;c:\msys64\mingw64\lib;%PATH%
-  - cmd: c:\msys64\usr\bin\bash -lc "pacman --needed --noconfirm -S mingw-w64-x86_64-toolchain base-devel"
-  # macOS
-  - sh: brew update
+image:
+  - Visual Studio 2017
+  - macos
 
-build_script:
-  # Windows
+
+cache: install-cache
+
+for:
+# Windows (both)
+-
+  matrix:
+    except:
+      - image: macos
+  before_build:
+  - cmd: IF %PLATFORM% == x64 (set PLAT_BITS=64) ELSE (set PLAT_BITS=32)
+  - cmd: IF %PLATFORM% == x64 (set PLAT_ARCH=x86_64) ELSE (set PLAT_ARCH=i686)
+  - cmd: set PATH=C:\msys64\mingw%PLAT_BITS%\bin;c:\msys64\mingw%PLAT_BITS%\lib;%PATH%
+  - cmd: c:\msys64\usr\bin\bash -lc "pacman --needed --noconfirm -S mingw-w64-%PLAT_ARCH%-toolchain base-devel"
+  build_script:
   - cmd: set PATH=%PATH:C:\Program Files\Git\usr\bin;=%
   - cmd: mkdir build
   - cmd: cd build
-  - cmd: cmake  -DCMAKE_INSTALL_PREFIX:PATH=install-x64 -G "MinGW Makefiles"  ..
+  - cmd: cmake  -DCMAKE_INSTALL_PREFIX:PATH=install-%PLATFORM% -DCMAKE_BUILD_TYPE:STRING="Debug" -DCMAKE_CXX_FLAGS_DEBUG="-Wall -Wpedantic" -G "MinGW Makefiles"  ..
   - cmd: cmake --build . -- VERBOSE=1
   - cmd: cmake --build . --target install
   - cmd: rem nuget pack
-  - cmd: rem nuget push org.openshot.libopenshot-audio*.nupkg -ApiKey ${SECURE_NUGET_API_KEY} -Source ${ACCOUNT_NUGET_FEED_URL}
-  - cmd: rem eppveyor PushArtifact org.openshot.libopenshot-audio.0.2.0-dev2.nupkg
-  # macOS
+  - cmd: rem nuget push org.openshot.libopenshot-audio*.nupkg -ApiKey %SECURE_NUGET_API_KEY% -Source %ACCOUNT_NUGET_FEED_URL%
+  - cmd: rem appveyor PushArtifact org.openshot.libopenshot-audio.0.2.0-dev2.nupkg
+
+# macOS
+-
+  matrix:
+    only:
+      - image: macos
+  before_build:
+  - sh: brew update
+  build_script:
   - sh: mkdir -p build; cd build;
-  - sh: cmake -DCMAKE_INSTALL_PREFIX:PATH="../cache-x64" -DCMAKE_BUILD_TYPE:STRING="Debug" -DCMAKE_CXX_FLAGS_DEBUG="-Wall -Wpedantic" ../
+  - sh: cmake -DCMAKE_INSTALL_PREFIX:PATH=install-${PLATFORM} -DCMAKE_BUILD_TYPE:STRING="Debug" -DCMAKE_CXX_FLAGS_DEBUG="-Wall -Wpedantic" ../
   - sh: cmake --build . -- VERBOSE=1
   - sh: cmake --build . --target install
 
