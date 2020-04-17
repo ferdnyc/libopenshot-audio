@@ -1,4 +1,3 @@
-version: '0.2.0.{build}'
 pull_requests:
   do_not_increment_build_number: true
 
@@ -26,7 +25,7 @@ for:
   matrix:
     except:
       - image: macos
-  before_build:
+  before_install:
   - cmd: IF %PLATFORM% == x64 (set PLAT_BITS=64) ELSE (set PLAT_BITS=32)
   - cmd: IF %PLATFORM% == x64 (set PLAT_ARCH=x86_64) ELSE (set PLAT_ARCH=i686)
   - cmd: set PATH=C:\msys64\mingw%PLAT_BITS%\bin;c:\msys64\mingw%PLAT_BITS%\lib;%PATH%
@@ -47,11 +46,30 @@ for:
   matrix:
     only:
       - image: macos
+  install:
+  - sh
+  - sh: brew install \
+        cmake libomp swig unittest-cpp rust qt libgomp \
+        imagemagick libvpx x264 x265 \
+        fdk-aac fdk-aac-encoder ffmpeg zeromq
   before_build:
-    #- sh: brew update
+  - sh: mkdir build
+  - sh: if [ \! -e "${LIBOPENSHOT_CACHE}" ]; then
+          mkdir libopenshot-audio-build; pushd libopenshot-audio-build;
+          cmake -DCMAKE_INSTALL_PREFIX=../install-cache/${PLAT_ARCH}/ ../libopenshot-audio;
+          cmake --build . -- VERBOSE=1;
+          cmake --build . --target install -- VERBOSE=1;
+          popd;
+        fi
+  - sh: git clone https://github.com/zeromq/cppzmq
+        cp cppzmq/zmq*.hpp build/
+        export CMAKE_EXTRA_ARGS="${CMAKE_EXTRA_ARGS} \
+        -DCMAKE_INCLUDE_CURRENT_DIR:BOOL=TRUE"
+  - sh: eval $(brew --env|grep -i cmake)
+        export CMAKE_EXTRA_ARGS="${CMAKE_EXTRA_ARGS} -DFFmpeg_ROOT=$(brew --prefix ffmpeg)"
   build_script:
   - sh: mkdir -p build; cd build;
-  - sh: cmake -DCMAKE_INSTALL_PREFIX:PATH=install-${PLATFORM} -DCMAKE_BUILD_TYPE:STRING="Debug" -DCMAKE_CXX_FLAGS_DEBUG="-Wall -Wpedantic" ../
+  - sh: cmake -DCMAKE_INSTALL_PREFIX:PATH=install-${PLAT_ARCH} -DCMAKE_BUILD_TYPE:STRING="Debug" -DCMAKE_CXX_FLAGS_DEBUG="-Wall -Wpedantic" ../
   - sh: cmake --build . -- VERBOSE=1
   - sh: cmake --build . --target install
 
