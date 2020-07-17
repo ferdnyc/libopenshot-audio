@@ -171,34 +171,32 @@ set(JUCE_MODULES
 	events )
 # Convert to list of source files (extension based on OS)
 foreach(j_module IN LISTS JUCE_MODULES)
-	list(APPEND JUCE_SOURCES
-		JuceLibraryCode/include_juce_${j_module}.${SOURCE_EXTENSION} )
+  list(APPEND JUCE_SOURCES
+    JuceLibraryCode/include_juce_${j_module}.${SOURCE_EXTENSION} )
 endforeach()
 
-add_library(openshot-audio SHARED ${JUCE_SOURCES} )
+add_library(openshot-audio_obj OBJECT ${JUCE_SOURCES} )
 
 # Include header directories
-target_include_directories(openshot-audio PUBLIC
-	$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
-	$<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/modules>
-	$<INSTALL_INTERFACE:include/libopenshot-audio> )
+target_include_directories(openshot-audio_obj
+  PRIVATE
+    ${CMAKE_CURRENT_BINARY_DIR}/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/modules
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/modules>
+    $<INSTALL_INTERFACE:include/libopenshot-audio>
+)
 
-# Set SONAME and other library properties
-set_target_properties(openshot-audio
-		PROPERTIES
-		VERSION ${PROJECT_VERSION}
-		SOVERSION ${PROJECT_SO_VERSION}
-		CXX_STANDARD 11
-		CXX_STANDARD_REQUIRED YES
-		CXX_EXTENSIONS OFF
-		MACOSX_RPATH OFF
-		INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/lib")
+set_property(TARGET openshot-audio_obj PROPERTY
+  POSITION_INDEPENDENT_CODE TRUE
+)
 
 # Threading library -- uses IMPORTED target Threads::Threads (since CMake 3.1)
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
 set(THREADS_PREFER_PTHREAD_FLAG TRUE)
 find_package(Threads REQUIRED)
-target_link_libraries(openshot-audio PUBLIC Threads::Threads)
+target_link_libraries(openshot-audio_obj PUBLIC Threads::Threads)
 
 # ALSA (Linux only)
 if(UNIX AND NOT APPLE)
@@ -209,20 +207,37 @@ if(UNIX AND NOT APPLE)
       INTERFACE_INCLUDE_DIRECTORIES ${ALSA_INCLUDE_DIR}
       INTERFACE_LINK_LIBRARIES ${ALSA_LIBRARIES})
   endif()
-  target_compile_definitions(openshot-audio PUBLIC LINUX)
-  target_link_libraries(openshot-audio PUBLIC ALSA::ALSA)
+  target_compile_definitions(openshot-audio_obj PUBLIC LINUX)
+  target_link_libraries(openshot-audio_obj PUBLIC ALSA::ALSA)
 endif()
 
 # ZLIB -- uses IMPORTED target ZLIB::ZLIB which has existed since CMake 3.1
 find_package(ZLIB REQUIRED)
-target_link_libraries(openshot-audio PUBLIC ZLIB::ZLIB)
+target_link_libraries(openshot-audio_obj PUBLIC ZLIB::ZLIB)
 
-target_link_libraries(openshot-audio PUBLIC
+target_link_libraries(openshot-audio_obj PUBLIC
 		${CMAKE_DL_LIBS}
 		${JUCE_PLATFORM_SPECIFIC_LIBRARIES} )
 
 # PROCESS SUB-DIRECTORIES
 add_subdirectory(src)
+
+# Create installable shared library
+add_library(openshot-audio SHARED)
+
+target_link_libraries(openshot-audio PUBLIC openshot-audio_obj)
+
+# Set SONAME and other library properties
+set_target_properties(openshot-audio
+  PROPERTIES
+  VERSION ${PROJECT_VERSION}
+  SOVERSION ${PROJECT_SO_VERSION}
+  CXX_STANDARD 11
+  CXX_STANDARD_REQUIRED YES
+  CXX_EXTENSIONS OFF
+  # MACOSX_RPATH OFF
+  # INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/lib"
+)
 
 
 #################### INSTALLATION #####################
@@ -249,7 +264,7 @@ find_package(PythonInterp 3)
 if(PYTHONINTERP_FOUND)
     # Pre-process the sources to fix documentation formatting
     add_custom_target(process-source-files
-        COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/doc/process_source_files.py ${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/modules "docs"
+        COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/doc/process_source_files.py ${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/modules "${CMAKE_CURRENT_BINARY_DIR}/docs"
         COMMENT "Formatting source code for documentation"
         VERBATIM )
 
