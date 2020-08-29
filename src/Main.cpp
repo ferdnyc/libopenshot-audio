@@ -31,7 +31,9 @@
  */
 
 #include <iostream>
-#include "../JuceLibraryCode/JuceHeader.h"
+#include <thread>
+#include <chrono>
+#include "JuceHeader.h"
 
 //==============================================================================
 int main()
@@ -39,8 +41,8 @@ int main()
 
 	// Initialize audio devices
 	std::cout << "Begin init" << std::endl;
-	AudioDeviceManager deviceManager;
-	String error = deviceManager.initialise (
+	juce::AudioDeviceManager deviceManager;
+	juce::String error = deviceManager.initialise (
 		0, /* number of input channels */
 		2, /* number of output channels */
 		0, /* no XML settings.. */
@@ -53,29 +55,27 @@ int main()
 	}
 
 	// Play test sound
-	std::cout << "Playing sound now" << std::endl;
-	deviceManager.playTestSound();
-	for (int x = 1; x <= 5; x++) {
-		std::cout << "... " << x << std::endl;
-		juce::Thread::sleep(1000);
+	std::cout << "You should hear five test tones, precisely 1 second apart." << std::endl;
+	auto start = std::chrono::steady_clock::now();
+	using sec = std::chrono::seconds;
+	for (auto s = static_cast<sec>(1); s <= static_cast<sec>(5); s++) {
+		std::cout << s.count() << "... " << std::flush;
+		deviceManager.playTestSound();
+		std::this_thread::sleep_until(start + s);
 	}
 
-	std::cout << "before device loop" << std::endl;
-	for (int i = 0; i < deviceManager.getAvailableDeviceTypes().size(); ++i)
-	{
-		const AudioIODeviceType* t = deviceManager.getAvailableDeviceTypes()[i];
-		const StringArray deviceNames = t->getDeviceNames ();
-
-		for (int j = 0; j < deviceNames.size (); ++j )
-		{
-			const String deviceName = deviceNames[j];
-			String menuName;
-
-			menuName << deviceName << " (" << t->getTypeName() << ")";
-			std::cout << menuName << std::endl;
+	std::cout << "\nAudio device probe results:\n";
+	for (const auto t : deviceManager.getAvailableDeviceTypes()) {
+		juce::String typeString;
+		typeString << "Type " << t->getTypeName() << ":";
+		std::cout << typeString << std::endl;
+		for (const auto deviceName :  t->getDeviceNames()) {
+			juce::String deviceString;
+			deviceString << deviceName;
+			std::cout << "  - " << deviceString << std::endl;
 		}
 	}
-	std::cout << "after device loop" << std::endl;
+  std::cout << "\nDemo complete. Shutting down device manager.\n";
 
 	// Stop audio devices
 	deviceManager.closeAudioDevice();
