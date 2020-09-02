@@ -24,7 +24,7 @@
 # along with OpenShot Audio Library. If not, see <http://www.gnu.org/licenses/>.
 ################################################################################
 
-cmake_minimum_required(VERSION 3.1...3.18 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.5...3.18 FATAL_ERROR)
 
 message("\
 -----------------------------------------------------------------
@@ -39,11 +39,20 @@ For more information, please visit <http://www.openshot.org/>.
 ################ ADD CMAKE MODULES ##################
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
 
-################ PROJECT VERSION ####################
-set(PROJECT_VERSION_FULL "0.2.0-dev3")
-set(PROJECT_SO_VERSION 7)
+# Enable IN_LIST in older CMake
+if (POLICY CMP0057)
+  cmake_policy(SET CMP0057 NEW)
+endif()
 
-# Remove the dash and anything following, to get the #.#.# version for project()
+################ PROJECT VERSION ####################
+set(PROJECT_VERSION_FULL "0.2.1-dev1")
+set(PROJECT_SO_VERSION 8)
+
+# Metadata
+set(ORG_SHORT_NAME "OpenShot")
+
+# Remove the dash and anything following from PROJECT_VERSION_FULL,
+# to get the #.#.# version for project()
 string(REGEX REPLACE "\-.*$" "" VERSION_NUM "${PROJECT_VERSION_FULL}")
 
 ################### SETUP PROJECT ###################
@@ -84,7 +93,7 @@ else()
 endif()
 
 message("
-Generating build files for OpenShot with CMake ${CMAKE_VERSION}
+Generating ${ORG_SHORT_NAME} build configuration with CMake ${CMAKE_VERSION}
   Building ${PROJECT_NAME} (version ${PROJECT_VERSION_FULL} (${PROJECT_VERSION_HEX})
   SO/API/ABI Version: ${PROJECT_SO_VERSION}
 ")
@@ -94,10 +103,8 @@ Generating build files for OpenShot with CMake ${CMAKE_VERSION}
 # XXX: This must be AFTER THE project() COMMAND w/ languages enabled,
 #      in order to properly configure CMAKE_INSTALL_LIBDIR path
 include(GNUInstallDirs)
-
-
-# Collect and display summary of options/dependencies
 include(FeatureSummary)
+include(CMakePrintHelpers)
 
 ###
 ### OPTIONS
@@ -107,7 +114,7 @@ add_feature_info("Use RPATH" WITH_RPATH "Build shared libs with RPATH set (if su
 )
 
 # Alternative location for JUCE modules (debian has their own)
-set(JUCE_MODULES_PATH "${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/modules" CACHE PATH
+set(JUCE_MODULES_PATH "${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode" CACHE PATH
     "Location of the JUCE source code 'modules' directory")
 if(CMAKE_VERSION VERSION_GREATER 3.4)
   # Display path relative to project root
@@ -117,6 +124,27 @@ else()
 endif()
 add_feature_info("Module source path" TRUE "Using JUCE sources from: ${_juce_dir}")
 
+# Default extension for source files
+if(UNIX AND APPLE)
+  set(SOURCE_EXTENSION "mm")
+else()
+  set(SOURCE_EXTENSION "cpp")
+endif()
+
+# List of modules to build
+set(JUCE_MODULES
+  juce_audio_basics
+  juce_audio_devices
+  juce_audio_formats
+  juce_core
+  juce_data_structures
+  juce_events )
+# Convert to list of source files (extension based on OS)
+foreach(j_module IN LISTS JUCE_MODULES)
+  list(APPEND JUCE_SOURCES
+    ${JUCE_MODULES_PATH}/include_${j_module}.${SOURCE_EXTENSION} )
+endforeach()
+
 ###
 ### Configure headers
 ###
@@ -124,19 +152,11 @@ add_feature_info("Module source path" TRUE "Using JUCE sources from: ${_juce_dir
 # Generate our custom headers from templates
 configure_file(include/JuceHeader.h.in include/JuceHeader.h @ONLY)
 configure_file(include/AppConfig.h.in include/AppConfig.h @ONLY)
+# Store paths for later install
 list(APPEND _public_headers
   ${CMAKE_CURRENT_BINARY_DIR}/include/JuceHeader.h
   ${CMAKE_CURRENT_BINARY_DIR}/include/AppConfig.h
 )
-
-# List header files in each module source tree
-foreach(j_module IN LISTS JUCE_MODULES)
-  file(GLOB_RECURSE _module_headers
-    RELATIVE ${JUCE_MODULES_PATH}/${j_module}
-    "*.h"
-  )
-  list(APPEND _public_headers ${_module_headers})
-endforeach()
 
 
 # Juce requires either DEBUG or NDEBUG to be defined on MacOS.
@@ -170,9 +190,6 @@ if(WIN32)
     add_feature_info("ASIO SDK" FALSE "ASIO SDK not found")
   endif()
 
-  # Tell Visual Studio not to automatically link system DLLs
-  add_definitions(-DJUCE_DONT_AUTOLINK_TO_WIN32_LIBRARIES)
-
   # Order here can be important!
   # For example, winmm.lib must come before kernel32.lib (if linked)
   # or older 32-bit windows versions will have linking issues for
@@ -191,42 +208,27 @@ if(UNIX AND APPLE)
   add_definitions(-flax-vector-conversions)
 endif()
 
-# Default extension for source files
-if(UNIX AND APPLE)
-  set(SOURCE_EXTENSION "mm")
-else()
-  set(SOURCE_EXTENSION "cpp")
-endif()
+###
+### OpenShot audio library
+###
 
-# List of modules to build
-set(JUCE_MODULES
-  juce_audio_basics
-  juce_audio_devices
-  juce_audio_formats
-  juce_core
-  juce_data_structures
-  juce_events )
-# Convert to list of source files (extension based on OS)
-foreach(j_module IN LISTS JUCE_MODULES)
-  list(APPEND JUCE_SOURCES
-    JuceLibraryCode/include_${j_module}.${SOURCE_EXTENSION} )
-endforeach()
-
-add_library(openshot-audio SHARED ${JUCE_SOURCES} )
+add_library(openshot-audio SHARED
+  ${JUCE_SOURCES}
+  ${_public_headers}
+  )
 
 # Define header files, bundling-vs-installing handled automatically
 # (FRAMEWORK builds place them inside the framework dir)
-set_property(TARGET openshot-audio APPEND
-  PROPERTY
-    PUBLIC_HEADER ${_public_headers}
-)
-unset(_public_headers)
+# set_property(TARGET openshot-audio APPEND
+#   PROPERTY
+#     PUBLIC_HEADER ${_public_headers}
+# )
 
 # Include header directories
 target_include_directories(openshot-audio PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
-  $<BUILD_INTERFACE:${JUCE_MODULES_PATH}>
-  # $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/openshot/>
+  $<BUILD_INTERFACE:${JUCE_MODULES_PATH}/modules>
+  $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/${CMAKE_INSTALL_INCLUDEDIR}/openshot/>
 )
 
 # Set SONAME and other library properties
@@ -288,8 +290,18 @@ target_link_libraries(openshot-audio PUBLIC
   ${JUCE_PLATFORM_SPECIFIC_LIBRARIES}
 )
 
+# Alias target for our exported IMPORT definition.
+# It permits this library to be linked to in the same manner everywhere,
+# transparently handling use as a subproject, after local install, etc...
+if(NOT TARGET ${ORG_SHORT_NAME}::Audio)
+  add_library(${ORG_SHORT_NAME}::Audio ALIAS openshot-audio)
+endif()
+
+
 # Test executable
-add_executable(test-openshotaudio src/Main.cpp)
+add_executable(test-openshotaudio
+  src/Main.cpp
+  )
 target_link_libraries(test-openshotaudio openshot-audio)
 
 ###
@@ -304,9 +316,20 @@ install(TARGETS openshot-audio test-openshotaudio
   LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
   ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openshot
-  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openshot
+  # XXX: We can't use this, it flattens the include tree (stupid)
+  # PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/openshot
+  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${ORG_SHORT_NAME}
 )
+# Install header files (preserving hierarchy)
+foreach(j_module IN LISTS JUCE_MODULES)
+  install(DIRECTORY ${JUCE_MODULES_PATH}/modules/${j_module}/
+    DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${ORG_SHORT_NAME}/${j_module}
+    FILES_MATCHING PATTERN "*.h" )
+endforeach()
+install(FILES
+  ${_public_headers}
+  DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${ORG_SHORT_NAME}
+  )
 
 # Install manpage
 install(FILES
@@ -316,10 +339,16 @@ install(FILES
 
 # Export configuration
 install(EXPORT Audio
-  NAMESPACE OpenShot::
-  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/openshot/
+  NAMESPACE ${ORG_SHORT_NAME}::
+  FILE ${PROJECT_NAME}.cmake
+  DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/${ORG_SHORT_NAME}/
 )
 
+export(TARGETS openshot-audio
+  NAMESPACE ${ORG_SHORT_NAME}::
+  APPEND FILE ${PROJECT_NAME}.cmake
+  EXPORT_LINK_INTERFACE_LIBRARIES
+)
 
 ########### DOCUMENTATION ##########
 # We need Python to process the source for Doxygen...
@@ -371,7 +400,7 @@ if (TARGET doc)
     )
 endif()
 
-add_feature_info("API Documentation" ENABLE_DOCS "Building 'doc' target generates doc/html in build dir")
+add_feature_info("API Documentation" ENABLE_DOCS "Generate <builddir>/doc/html by making 'doc' target")
 
 ### Display feature summary
 feature_summary(WHAT ALL
