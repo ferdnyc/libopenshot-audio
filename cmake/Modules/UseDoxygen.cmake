@@ -68,9 +68,20 @@
 #  DOXYFILE_HTML_DIR - Directory relative to DOXYFILE_OUTPUT_DIR where
 #  	the Doxygen html output is stored. Defaults to "html".
 #
-
+# The following two variables can be set to avoid conflicts when this
+# tool is used multple times in the same build (e.g. with subprojects)
+#
+#  DOXYGEN_TARGET_NAME - The name of the internal target for
+#   Doxygen's add_custom_command() job to process the source tree
+#
+#  DOXYGEN_DOC_TARGET_NAME - The name of the target created for
+#   the user to invoke in order to generate documentation
 #
 #  Copyright (c) 2009, 2010, 2011 Tobias Rautenkranz <tobias@rautenkranz.ch>
+#
+# CHANGES:
+#  - 2020-09-02: Target-name configurability
+#      FeRD (Frank Dana) <ferdnyc@gmail.com>
 #
 #  Redistribution and use is allowed according to the terms of the New
 #  BSD license.
@@ -81,6 +92,11 @@ macro(usedoxygen_set_default name value type docstring)
 		set("${name}" "${value}" CACHE "${type}" "${docstring}")
 	endif()
 endmacro()
+
+usedoxygen_set_default(DOXYGEN_TARGET_NAME "doxygen"
+	STRING "Name of doxygen target (to avoid conflicts)")
+usedoxygen_set_default(DOXYGEN_DOC_TARGET_NAME "doc"
+	STRING "Name of target used to generate docs")
 
 find_package(Doxygen)
 
@@ -123,7 +139,7 @@ if(DOXYGEN_FOUND AND DOXYFILE_IN_FOUND)
 		ADDITIONAL_MAKE_CLEAN_FILES
 		"${DOXYFILE_OUTPUT_DIR}/${DOXYFILE_HTML_DIR}")
 
-	add_custom_target(doxygen
+	add_custom_target(${DOXYGEN_TARGET_NAME}
 		COMMAND "${DOXYGEN_EXECUTABLE}"
 			"${DOXYFILE}" 
 		COMMENT "Writing documentation to ${DOXYFILE_OUTPUT_DIR}..."
@@ -146,7 +162,7 @@ if(DOXYGEN_FOUND AND DOXYFILE_IN_FOUND)
 				set(DOXYFILE_PDFLATEX "YES")
 			endif()
 
-			add_custom_command(TARGET doxygen
+			add_custom_command(TARGET ${DOXYGEN_TARGET_NAME}
 				POST_BUILD
 				COMMAND "${DOXYFILE_MAKE}"
 				COMMENT	"Running LaTeX for Doxygen documentation in ${DOXYFILE_OUTPUT_DIR}/${DOXYFILE_LATEX_DIR}..."
@@ -161,12 +177,12 @@ if(DOXYGEN_FOUND AND DOXYFILE_IN_FOUND)
 
 	configure_file("${DOXYFILE_IN}" "${DOXYFILE}" @ONLY)
 
-	if(TARGET doc)
-		get_target_property(DOC_TARGET doc TYPE)
+	if(TARGET ${DOXYGEN_DOC_TARGET_NAME})
+		get_target_property(DOC_TARGET ${DOXYGEN_DOC_TARGET_NAME} TYPE)
 	endif()
 	if(NOT DOC_TARGET)
-		add_custom_target(doc)
+		add_custom_target(${DOXYGEN_DOC_TARGET_NAME})
 	endif()
 
-	add_dependencies(doc doxygen)
+	add_dependencies(${DOXYGEN_DOC_TARGET_NAME} ${DOXYGEN_TARGET_NAME})
 endif()
