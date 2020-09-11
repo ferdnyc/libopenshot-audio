@@ -28,7 +28,8 @@ def add_doxygen_group(path, group_name):
     """Add a Doxygen group to the file at 'path'.
 
        The addition of juce namespacing code to all of the source files breaks
-       backwards compatibility by changing the doc URLs
+       backwards compatibility by changing the doc URLs, so we need to remove
+       the namespaces.
     """
 
     filename = os.path.basename(path)
@@ -55,6 +56,13 @@ if __name__ == "__main__":
                              "subdirectories")
     args = parser.parse_args()
 
+    try:
+        shutil.rmtree(args.dest_dir)
+    except OSError:
+        pass
+    except FileNotFoundError:
+        pass
+
     # Get the list of JUCE modules to include.
     if args.subdirs:
         juce_modules = args.subdirs.split(",")
@@ -63,10 +71,6 @@ if __name__ == "__main__":
         for item in os.listdir(args.source_dir):
             if os.path.isdir(os.path.join(args.source_dir, item)):
                 juce_modules.append(item)
-
-    # Ensure any old processed files are cleared away
-    if os.path.exists(args.dest_dir):
-        shutil.rmtree(args.dest_dir, ignore_errors=True)
 
     # Copy the JUCE modules to the temporary directory, and process the source
     # files.
