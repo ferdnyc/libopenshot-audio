@@ -142,7 +142,8 @@ IF (WIN32)
 	ENDIF (ASIO_SDK_DIR)
 
 	# Tell Visual Studio not to automatically link system DLLs
-	ADD_DEFINITIONS(-DJUCE_DONT_AUTOLINK_TO_WIN32_LIBRARIES)
+	target_compile_definitions(openshot-audio
+    PRIVATE -DJUCE_DONT_AUTOLINK_TO_WIN32_LIBRARIES)
 
 	# Order here can be important!
 	# For example, winmm.lib must come before kernel32.lib (if linked)
@@ -229,6 +230,9 @@ target_link_libraries(openshot-audio PUBLIC ZLIB::ZLIB)
 target_link_libraries(openshot-audio PUBLIC
 		${CMAKE_DL_LIBS}
 		${JUCE_PLATFORM_SPECIFIC_LIBRARIES} )
+
+# Create an alias so our EXPORT target name works internally, as well
+add_library(OpenShot::Audio ALIAS openshot-audio)
 
 # PROCESS SUB-DIRECTORIES
 add_subdirectory(src)
