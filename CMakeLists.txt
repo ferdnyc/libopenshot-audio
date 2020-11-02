@@ -301,9 +301,17 @@ add_subdirectory(src)
 ###
 ###
 
+install(TARGETS openshot-audio openshot-audio-demo
+  EXPORT OpenShotAudioTargets
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libopenshot
+  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libopenshot
+)
 # Install manpage
 install(FILES
-  ${CMAKE_CURRENT_SOURCE_DIR}/doc/openshot-audio-test-sound.1
+  ${CMAKE_CURRENT_SOURCE_DIR}/doc/openshotaudio-demo.1
   DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
 )
 

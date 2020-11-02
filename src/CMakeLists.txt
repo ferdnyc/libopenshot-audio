@@ -26,5 +26,8 @@
 
 
 ############### TEST EXECUTABLES ################
-add_executable(openshotaudio-demo Main.cpp)
-target_link_libraries(openshotaudio-demo OpenShot::Audio)
+add_executable(openshot-audio-demo Main.cpp)
+target_link_libraries(openshot-audio-demo OpenShot::Audio)
+if(USE_RPATH)
+  set_target_properties(openshot-audio-demo PROPERTIES ${RPATH_PROPERTIES})
+endif()
