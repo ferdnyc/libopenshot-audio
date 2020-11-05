@@ -37,7 +37,7 @@ For more information, please visit <http://www.openshot.org/>.
 -----------------------------------------------------------------")
 
 ################ ADD CMAKE MODULES ##################
-set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/Modules")
 
 ################ PROJECT VERSION ####################
 set(PROJECT_VERSION_FULL "0.2.1-dev1")
@@ -102,8 +102,16 @@ include(FeatureSummary)
 ###
 
 option(USE_RPATH "Use INSTALL_RPATH_USE_LINK_PATH for self-contained packaging" OFF)
-add_feature_info("Use RPATH" USE_RPATH "Build shared libs with RPATH set (if supported)"
+add_feature_info("Use RPATH" USE_RPATH
+  "Build shared libs with RPATH set (on supported platforms)"
 )
+option(PYTHON_BUNDLE "Build and install the library for incorporation into a Python package" OFF)
+add_feature_info("Python bundling" PYTHON_BUNDLE "Customize library build for Python integration")
+
+# Bundling requires USE_RPATH
+if(PYTHON_BUNDLE)
+  set(USE_RPATH TRUE CACHE BOOL FORCE "")
+endif()
 
 # Alternative location for JUCE modules (debian has their own)
 set(JUCE_MODULES_PATH "${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/modules" CACHE PATH
@@ -131,9 +139,8 @@ if(UNIX)
     SYMBOLIC
   )
 else()
-  file(COPY
-    include/OpenShotAudio.h
-    "${CMAKE_CURRENT_BINARY_DIR}/include/libopenshot/JuceHeader.h"
+  configure_file(include/OpenShotAudio.h.in include/libopenshot/JuceHeader.h @ONLY)
+      "${CMAKE_CURRENT_BINARY_DIR}/include/libopenshot/JuceHeader.h"
   )
 endif()
 configure_file(include/AppConfig.h.in include/libopenshot/AppConfig.h @ONLY)
@@ -178,11 +185,11 @@ add_library(openshot-audio SHARED ${JUCE_SOURCES})
 
 # Define header files, bundling-vs-installing handled automatically
 # (FRAMEWORK builds place them inside the framework dir)
-set_property(TARGET openshot-audio APPEND
-  PROPERTY
-    PUBLIC_HEADER ${_public_headers}
-)
-unset(_public_headers)
+# set_property(TARGET openshot-audio APPEND
+#   PROPERTY
+#     PUBLIC_HEADER ${_public_headers}
+# )
+# unset(_public_headers)
 
 # Include header directories
 target_include_directories(openshot-audio PUBLIC
@@ -195,7 +202,7 @@ target_include_directories(openshot-audio PUBLIC
 set_target_properties(openshot-audio PROPERTIES
   VERSION ${PROJECT_VERSION}
   SOVERSION ${PROJECT_SO_VERSION}
-  EXPORT_NAME Audio
+  EXPORT_NAME Audio  # Exports as OpenShot::Audio target
 )
 
 # Require language features we use
@@ -278,6 +285,7 @@ endif()
 
 # ALSA (Linux only)
 if(UNIX AND NOT APPLE)
+  set(NEED_ALSA TRUE)
   find_package(ALSA REQUIRED)
   if (ALSA_FOUND AND NOT TARGET ALSA::ALSA) # CMake < 3.12
     add_library(ALSA::ALSA INTERFACE IMPORTED)
@@ -287,6 +295,9 @@ if(UNIX AND NOT APPLE)
   endif()
   target_compile_definitions(openshot-audio PUBLIC LINUX)
   target_link_libraries(openshot-audio PUBLIC ALSA::ALSA)
+else()
+  # For EXPORTED Config
+  set(NEED_ALSA FALSE)
 endif()
 
 # ZLIB -- uses IMPORTED target ZLIB::ZLIB which has existed since CMake 3.1
@@ -312,21 +323,40 @@ install(TARGETS openshot-audio openshot-audio-demo
   EXPORT OpenShotAudioTargets
 )
 
-install(TARGETS openshot-audio openshot-audio-demo
-  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libopenshot
-  PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libopenshot
-)
+if(PYTHON_BUNDLE)
+  set(_header_destination include/libopenshot)
+  install(TARGETS openshot-audio
+    LIBRARY DESTINATION libopenshot
+    RUNTIME DESTINATION libopenshot
+    INCLUDES DESTINATION ${_header_destination}
+  )
+else()
+  # if(APPLE AND USE_RPATH)
+  # XXX: set(_header_destination _some_framework_path)
+  # else()
+    set(_header_destination ${CMAKE_INSTALL_INCLUDEDIR}/libopenshot-audio)
+  # endif()
+
+  install(TARGETS openshot-audio openshot-audio-demo
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    INCLUDES DESTINATION ${_header_destination}
+    # PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libopenshot
+  )
+
+  # Install manpage
+  install(FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/doc/openshotaudio-demo.1
+    DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
+  )
+endif()
 
 # Install Header Files
-
-# if(APPLE AND USE_RPATH)
-# XXX: set(_header_destination _some_framework_path)
-# else()
-  set(_header_destination ${CMAKE_INSTALL_INCLUDEDIR}/libopenshot)
-# endif()
+install(FILES
+  ${_public_headers}
+  DESTINATION ${_header_destination}
+)
 
 foreach(j_module IN LISTS JUCE_MODULES)
   install(CODE "message(STATUS \"Installing ${j_module} headers to ${_header_destination}/${j_module}\")")
@@ -335,17 +365,14 @@ foreach(j_module IN LISTS JUCE_MODULES)
     FILES_MATCHING PATTERN "*.h" )
 endforeach()
 
-# Install manpage
-install(FILES
-  ${CMAKE_CURRENT_SOURCE_DIR}/doc/openshotaudio-demo.1
-  DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
-)
-
 # Export configuration to build tree
 export(EXPORT OpenShotAudioTargets
   FILE OpenShotAudioTargets.cmake
   NAMESPACE OpenShot::
 )
+
+# Package the exported targets for external consumers
+include(CMakePackageConfigHelpers)
 
 # (Borrowed from cppzmq/CMakeList.txt)
 # GNUInstallDirs "DATADIR" wrong here; CMake search path wants "share".
@@ -358,10 +385,6 @@ install(
   NAMESPACE OpenShot::
   DESTINATION ${CMAKECONFIG_INSTALL_DIR}
 )
-
-# Package the exported targets for external consumers
-include(CMakePackageConfigHelpers)
-
 configure_package_config_file(
   cmake/Config.cmake.in
   "${CMAKE_CURRENT_BINARY_DIR}/OpenShotAudioConfig.cmake"
@@ -409,22 +432,23 @@ if(PYTHONINTERP_FOUND)
   # Find Doxygen (used for documentation)
   include(cmake/Modules/UseDoxygen.cmake)
 
-    # Make sure process-source comes before Doxygen targets,
-    # assuming UseDoxygen found the tools and created them
-    if(TARGET doc)
-      add_dependencies(doc process-source-files)
-    endif()
-    if(TARGET doxygen)
-      add_dependencies(doxygen process-source-files)
-      add_feature_info("Doxygen" TRUE "Generate API docs from source code annotations")
-    endif()
+  # Make sure process-source comes before Doxygen targets,
+  # assuming UseDoxygen found the tools and created them
+  if(TARGET doc)
+    add_dependencies(doc process-source-files)
+  endif()
+  if(TARGET doxygen)
+    add_dependencies(doxygen process-source-files)
+    add_feature_info("Doxygen" TRUE "Generate API docs from source code annotations")
+  endif()
 endif()
 
 # Doxygen was found
 if(TARGET doc)
   set(ENABLE_DOCS TRUE)
-    message(STATUS "Doxygen found. To generate doc/html in build dir, use the 'doc' target")
+  message(STATUS "Doxygen found. To generate doc/html in build dir, use the 'doc' target")
 
+  if(NOT PYTHON_BUNDLE)
     # Install docs, if the user builds them with `make doc`
     install(CODE "MESSAGE(\"Checking for documentation files to install...\")")
     install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/doc/html/
@@ -432,13 +456,14 @@ if(TARGET doc)
       MESSAGE_NEVER # Don't spew about file copies
       OPTIONAL      # No error if the docs aren't found
     )
+  endif()
 endif()
 
 add_feature_info("API Documentation" ENABLE_DOCS "Building 'doc' target generates doc/html in build dir")
 
 ### Display feature summary
 feature_summary(WHAT ALL
-    INCLUDE_QUIET_PACKAGES
-    FATAL_ON_MISSING_REQUIRED_PACKAGES
-    DESCRIPTION "Displaying feature summary\n\nBuild configuration:"
+  INCLUDE_QUIET_PACKAGES
+  FATAL_ON_MISSING_REQUIRED_PACKAGES
+  DESCRIPTION "Displaying feature summary\n\nBuild configuration:"
 )

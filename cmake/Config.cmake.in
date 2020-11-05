@@ -27,7 +27,7 @@
 
 include(CMakeFindDependencyMacro)
 
-if(UNIX AND NOT APPLE)
+if(@NEED_ALSA@)
   find_dependency(ALSA)
   if (ALSA_FOUND AND NOT TARGET ALSA::ALSA)  # CMake < 3.12
     add_library(ALSA::ALSA INTERFACE IMPORTED)
