@@ -79,8 +79,9 @@ find_package_handle_standard_args(ASIO DEFAULT_MSG ASIO_SDK_DIR)
 
 # Export target for configuration
 if(ASIO_FOUND)
-  message(STATUS "Creating IMPORTED target ASIO::SDK")
   if(NOT TARGET ASIO::SDK)
+    message(STATUS "Creating IMPORTED target ASIO::SDK")
+
     add_library(ASIO::SDK INTERFACE IMPORTED)
 
     set_target_properties(ASIO::SDK PROPERTIES
@@ -90,6 +91,6 @@ if(ASIO_FOUND)
       INTERFACE_COMPILE_DEFINITIONS "JUCE_ASIO=1")
 
     set_property(TARGET ASIO::SDK APPEND PROPERTY
-      IMPORTED_LOCATION ${ASIO_SDK_DIR})
+      INTERFACE_COMPILE_DEFINITIONS "ASIO_SDK_DIR=${ASIO_SDK_DIR}")
   endif()
 endif()
