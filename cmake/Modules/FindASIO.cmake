@@ -49,12 +49,9 @@ find_path(ASIO_COMMON_INCLUDE_DIR iasiodrv.h
     ${ASIO_ROOT}
     ${ASIO_SDK_DIR}
     ${ASIO_DIR}
-    thirdparty
+    thirdparty/asiosdk
   PATH_SUFFIXES
-    asiosdk*/common
-    asio*/common
-    asio*
-    common
+	  common
     )
 
 if(ASIO_COMMON_INCLUDE_DIR)
