@@ -231,6 +231,10 @@ endif()
 # (Ruby) have issues dealing with JUCE's use of isFinite()
 target_compile_definitions(openshot-audio INTERFACE HAVE_ISFINITE=1)
 
+if(DEFINED WIN32)
+	set_property(GLOBAL PROPERTY WIN32 "WIN32 flag for build conditionals")
+endif()
+
 if(WIN32)
   # Try to load ASIO SDK
   find_package(ASIO)
