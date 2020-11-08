@@ -185,7 +185,7 @@ add_library(openshot-audio SHARED ${JUCE_SOURCES})
 
 # Include header directories
 target_include_directories(openshot-audio PUBLIC
-  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/libopenshot/>
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include/>
   $<BUILD_INTERFACE:${JUCE_MODULES_PATH}>
   $<INSTALL_INTERFACE:${CMAKE_INSTALL_INCLUDEDIR}/libopenshot/>
 )
