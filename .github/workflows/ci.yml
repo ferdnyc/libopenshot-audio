@@ -56,9 +56,9 @@ jobs:
         pushd build
         cmake --build . --target install -- VERBOSE=1
         popd
-        
+
     - name: Upload build artifact
-      uses: actions/upload-artifact@2
+      uses: actions/upload-artifact@v2
       with:
-        name: 'libopenshot-audio-${{ github.branch }}-${{ matrix.os }}'
-        path: ${{ github.workspace }}/build/install/
+        name: 'libopenshot-audio-${{ matrix.os }}'
+        path: ${{ github.workspace }}/build/dist/
