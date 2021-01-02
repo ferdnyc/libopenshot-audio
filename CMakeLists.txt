@@ -96,6 +96,7 @@ Generating build files for OpenShot with CMake ${CMAKE_VERSION}
 include(GNUInstallDirs)
 
 ### Build configuration (options)
+option(AUTO_INSTALL_DOCS "Include documentation in the default install" ON)
 
 # Specify alternative location for JUCE modules (debian has their own)
 set(JUCE_MODULES_PATH "${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/modules" CACHE PATH
@@ -295,8 +296,13 @@ if (TARGET doc)
     install(CODE "MESSAGE(\"Checking for documentation files to install...\")")
     install(CODE "MESSAGE(\"(Compile with 'make doc' command, requires Python3 and Doxygen)\")")
 
-    install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/doc/html/
-        DESTINATION ${CMAKE_INSTALL_DOCDIR}/API
-        MESSAGE_NEVER # Don't spew about file copies
-        OPTIONAL )    # No error if the docs aren't found
+  if(NOT AUTO_INSTALL_DOCS)
+    set(DOCS_AUTO_INSTALL_ARG EXCLUDE_FROM_ALL)
+  endif()
+  install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/doc/html/
+    DESTINATION ${CMAKE_INSTALL_DOCDIR}/API
+    MESSAGE_NEVER # Don't spew about file copies
+    COMPONENT "Documentation"
+    ${DOCS_AUTO_INSTALL_ARG}
+    OPTIONAL )    # No error if the docs aren't found
 endif()
