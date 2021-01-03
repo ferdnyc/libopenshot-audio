@@ -1,0 +1,49 @@
+name: 'windows-ci'
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: windows-latest
+    shell: msys2 {0}
+    strategy:
+      matrix:
+        compiler: [gcc, clang]
+    steps:
+    - name: Check out branch
+      uses: actions/checkout@v2
+
+    - name: Set up MSYS2 environment
+      uses: msys2/setup-msys2@v2
+      with:
+        update: true
+        install: >-
+          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-pkgconf
+          mingw-w64-x86_64-make
+          python3
+          doxygen
+          make
+          pkgconf
+
+    - name: Build
+      shell: msys2 {0}
+      run: |
+        cmake -B build -S . \
+          -G "MinGW Makefiles" \
+          -DCMAKE_INSTALL_PREFIX:PATH="dist" \
+          -DCMAKE_BUILD_TYPE="Debug" \
+          -DAUTO_INSTALL_DOCS=0
+        cmake --build build -- VERBOSE=1
+
+    - name: Generate API documentation
+      shell: msys2 {0}
+      run: cmake --build build --target doc
+
+    - name: Install
+      shell: msys2 {0}
+      run: cmake --build build --target install -- VERBOSE=1
+
+    - name: Upload build artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: 'OpenShotAudio-${{ matrix.os }}-${{ matrix.compiler }}'
+        path: ${{ github.workspace }}/build/dist/
