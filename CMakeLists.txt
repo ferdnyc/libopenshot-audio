@@ -220,16 +220,16 @@ endif()
 
 if(APPLE)
 	target_link_libraries(openshot-audio PRIVATE
-    -framework Carbon
-    -framework Cocoa
-    -framework CoreFoundation
-    -framework CoreAudio
-    -framework CoreMidi
-    -framework IOKit
-    -framework AGL
-    -framework AudioToolbox
-    -framework QuartzCore
-    -framework Accelerate
+    "-framework Carbon"
+    "-framework Cocoa"
+    "-framework CoreFoundation"
+    "-framework CoreAudio"
+    "-framework CoreMidi"
+    "-framework IOKit"
+    "-framework AGL"
+    "-framework AudioToolbox"
+    "-framework QuartzCore"
+    "-framework Accelerate"
     objc
   )
   target_compile_options(openshot-audio PRIVATE -flax-vector-conversions)
