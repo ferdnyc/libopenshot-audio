@@ -94,8 +94,10 @@ Generating build files for OpenShot with CMake ${CMAKE_VERSION}
 # XXX: This must be AFTER THE PROJECT() COMMAND w/ languages enabled,
 #      in order to properly configure CMAKE_INSTALL_LIBDIR path
 include(GNUInstallDirs)
+include(FeatureSummary)
 
 ### Build configuration (options)
+option(ENABLE_AUDIO_DOCS "Attempt to build API docs for audio library" ON)
 option(AUTO_INSTALL_DOCS "Include documentation in the default install" ON)
 
 # Specify alternative location for JUCE modules (debian has their own)
@@ -251,14 +253,25 @@ INSTALL(TARGETS openshot-audio
 	RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR} )
 
 # Install manpage
-INSTALL(FILES ${CMAKE_CURRENT_SOURCE_DIR}/doc/openshot-audio-test-sound.1
-	DESTINATION ${CMAKE_INSTALL_MANDIR}/man1 )
+install(FILES
+  ${CMAKE_CURRENT_SOURCE_DIR}/doc/openshot-audio-test-sound.1
+  DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
+)
 
-########### DOCUMENTATION ##########
+###
+### DOCUMENTATION
+###
+
 # We need Python to process the source for Doxygen...
-find_package(PythonInterp 3)
+set(AUDIO_DOCS_ENABLED FALSE)
+if(ENABLE_AUDIO_DOCS AND CMAKE_VERSION VERSION_GREATER 3.11)
+  # Find python (used to preprocess documentation)
+  find_package(PythonInterp 3)
+  # Find Doxygen (used for documentation)
+  find_package(Doxygen)
 
-if(PYTHONINTERP_FOUND)
+  if(PYTHONINTERP_FOUND AND DOXYGEN_FOUND)
+    message(STATUS "Doxygen found, enabling ${PROJECT_NAME} documentation target")
     # Pre-process the sources to fix documentation formatting
     add_custom_target(process-source-files
         COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/doc/process_source_files.py ${JUCE_MODULES_PATH} "docs"
@@ -267,38 +280,138 @@ if(PYTHONINTERP_FOUND)
 
     # Processed docs are removed on "make clean"
     set_property(DIRECTORY
-        APPEND PROPERTY
-        ADDITIONAL_MAKE_CLEAN_FILES "docs" )
+      APPEND PROPERTY
+      ADDITIONAL_MAKE_CLEAN_FILES "docs"
+    )
 
-    # Find Doxygen (used for documentation)
-    include(cmake/Modules/UseDoxygen.cmake)
+    set(DOXYGEN_QUIET YES)
+    set(DOXYGEN_PROJECT_NAME "OpenShot Audio Library | ${PROJECT_NAME}")
+    set(DOXYGEN_PROJECT_NUMBER ${PROJECT_VERSION})
+    set(DOXYGEN_OUTPUT_DIRECTORY "${PROJECT_BINARY_DIR}/docs")
+    set(DOXYGEN_STRIP_FROM_PATH "${PROJECT_BINARY_DIR}/docs")
+    set(DOXYGEN_USE_MDFILE_AS_MAINPAGE "${PROJECT_SOURCE_DIR}/INSTALL.md")
 
+    set(DOXYGEN_FILE_PATTERNS
+      "juce_*.h"
+      "juce_*.dox"
+      "*.md"
+    )
+
+    set(DOXYGEN_INLINE_SIMPLE_STRUCTS YES)
+    set(DOXYGEN_EXTRACT_ALL NO)
+    set(DOXYGEN_HIDE_UNDOC_CLASSES YES)
+    set(DOXYGEN_HIDE_FRIEND_COMPOUNDS YES)
+    set(DOXYGEN_HIDE_IN_BODY_DOCS YES)
+    set(DOXYGEN_SORT_BRIEF_DOCS YES)
+    set(DOXYGEN_INTERNAL_DOCS YES)
+    set(DOXYGEN_GENERATE_TODOLIST NO)
+    set(DOXYGEN_GENERATE_TESTLIST NO)
+    set(DOXYGEN_GENERATE_BUGLIST NO)
+
+    set(DOXYGEN_WARNINGS NO)
+    set(DOXYGEN_WARN_IF_UNDOCUMENTED NO)
+    set(DOXYGEN_RECURSIVE YES)
+    set(DOXYGEN_SOURCE_BROWSER YES)
+    set(DOXYGEN_REFERENCED_BY_RELATION YES)
+
+    set(DOXYGEN_HTML_OUTPUT "html")
+    set(DOXYGEN_HTML_DYNAMIC_SECTIONS NO)
+
+    set(DOXYGEN_DOT_IMAGE_FORMAT svg)
+    set(DOXYGEN_INTERACTIVE_SVG YES)
+    set(DOXYGEN_DOT_TRANSPARENT YES)
+
+    set(DOXYGEN_EXCLUDE
+      "${PROJECT_BINARY_DIR}/docs/juce_core/zip/zlib"
+      "${PROJECT_BINARY_DIR}/docs/juce_audio_formats/codecs/flac"
+      "${PROJECT_BINARY_DIR}/docs/juce_audio_formats/codecs/oggvorbis"
+      "${PROJECT_BINARY_DIR}/docs/juce_audio_devices/native"
+      "${PROJECT_BINARY_DIR}/docs/juce_core/native"
+      "${PROJECT_BINARY_DIR}/docs/juce_events/native"
+    )
+    set(DOXYGEN_EXCLUDE_PATTERNS
+      [["*/.*"]]
+      [["*/.*/*"]]
+      juce_CompilerSupport.h
+      juce_StdFunctionCompat.h
+      juce_FlacHeader.h
+    )
+
+    set(DOXYGEN_ALIASES
+      tags{1}=
+      [[topictag{1}=\1]]
+      [["box{1}=<dl class=\"section attention\"><dt>\1</dt><dd>"]]
+      endbox=</dd></dl>
+      c_void=@s_code{void}
+      c_bool=@s_code{bool}
+      c_char=@s_code{char}
+      c_float=@s_code{float}
+      c_double=@s_code{double}
+      c_int=@s_code{int}
+      c_nullptr=@s_code{nullptr}
+      [[c_for=@s_code{for()}]]
+      [[c_if=@s_code{if()}]]
+      c_ifelse=@s_code{if..else}
+      [[c_while=@s_code{while()}]]
+      c_true=@s_code{true}
+      c_false=@s_code{false}
+      c_enum=@s_code{enum}
+      c_switch=@s_code{switch..case}
+      c_static=@s_code{static}
+      c_new=@s_code{new}
+      c_typedef=@s_code{typedef}
+    )
+    set(DOXYGEN_VERBATIM_VARS
+      DOXYGEN_ALIASES
+      DOXYGEN_EXCLUDE_PATTERNS
+    )
+
+    doxygen_add_docs(${PROJECT_NAME}-doc
+      ${PROJECT_BINARY_DIR}/docs
+      ${PROJECT_BINARY_DIR}/include
+      ${PROJECT_SOURCE_DIR}/INSTALL.md
+      ${PROJECT_SOURCE_DIR}/doc
+      WORKING_DIRECTORY ${PROJECT_BINARY_DIR}/docs
+      COMMENT "Generate ${PROJECT_NAME} documentation"
+    )
     # Make sure process-source comes before Doxygen targets,
     # assuming UseDoxygen found the tools and created them
-    if(TARGET doc)
-        add_dependencies(doc process-source-files)
+    if(TARGET ${PROJECT_NAME}-doc)
+        add_dependencies(${PROJECT_NAME}-doc process-source-files)
+        set(AUDIO_DOCS_ENABLED TRUE)
     endif()
-    if(TARGET doxygen)
-        add_dependencies(doxygen process-source-files)
-    endif()
+  endif()
 endif()
 
 # Doxygen was found
-if (TARGET doc)
-    message(STATUS "Doxygen found, documentation target enabled")
-    message("\nTo compile documentation in doc/html, run: 'make doc'")
-
-    # Install docs, if the user builds them with `make doc`
-    install(CODE "MESSAGE(\"Checking for documentation files to install...\")")
-    install(CODE "MESSAGE(\"(Compile with 'make doc' command, requires Python3 and Doxygen)\")")
+if (TARGET ${PROJECT_NAME}-doc)
+  # Install docs, iff the user builds them with `make doc`
+  install(CODE "MESSAGE(\"Checking for documentation files to install...\")")
+  install(CODE "MESSAGE(\"(Compile with 'make doc' command, requires Python3 and Doxygen)\")")
 
   if(NOT AUTO_INSTALL_DOCS)
     set(DOCS_AUTO_INSTALL_ARG EXCLUDE_FROM_ALL)
   endif()
   install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/doc/html/
     DESTINATION ${CMAKE_INSTALL_DOCDIR}/API
-    MESSAGE_NEVER # Don't spew about file copies
+    MESSAGE_NEVER  # Don't spew about file copies
     COMPONENT "Documentation"
     ${DOCS_AUTO_INSTALL_ARG}
-    OPTIONAL )    # No error if the docs aren't found
+    OPTIONAL  # No error if the docs aren't found
+  )
+  if(NOT TARGET doc)
+    add_custom_target(doc)
+  endif()
+  if(TARGET doc)
+    add_dependencies(doc ${PROJECT_NAME}-doc)
+  endif()
 endif()
+add_feature_info("${PROJECT_NAME} docs" AUDIO_DOCS_ENABLED "Build ${PROJECT_NAME} API documentation")
+
+###
+### PRINT FEATURE SUMMARY
+###
+feature_summary(WHAT ALL
+  INCLUDE_QUIET_PACKAGES
+  FATAL_ON_MISSING_REQUIRED_PACKAGES
+  DESCRIPTION "${PROJECT_NAME} build configuration:")
