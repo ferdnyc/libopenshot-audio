@@ -118,11 +118,8 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/
 # -DDEBUG for debug builds. We'll do this for all OSes, even
 # though only MacOS requires it.
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
-# Make sure we've picked some build type, default to debug
+# Make sure we've picked some build type, default to release
 if(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
-	set(CMAKE_BUILD_TYPE "Debug")
-endif()
-
 
 # Enable stack-unwinding support in c objects on gcc-based platforms.
 # Failing to do so will cause your program to be terminated when a png
@@ -164,6 +161,7 @@ if(UNIX AND APPLE)
 	SET(JUCE_PLATFORM_SPECIFIC_DIR build/macosx/platform_specific_code)
 	SET(JUCE_PLATFORM_SPECIFIC_LIBRARIES "-framework Carbon -framework Cocoa -framework CoreFoundation -framework CoreAudio -framework CoreMidi -framework IOKit -framework AGL -framework AudioToolbox -framework QuartzCore -lobjc -framework Accelerate")
 	SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -flax-vector-conversions")
+	set(CMAKE_BUILD_TYPE "Release")
 endif()
 
 # Default extension for source files
