@@ -147,10 +147,11 @@ endforeach()
 add_library(openshot-audio SHARED ${JUCE_SOURCES})
 
 # Include header directories
-target_include_directories(openshot-audio PUBLIC
-	$<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
-	$<BUILD_INTERFACE:${JUCE_MODULES_PATH}>
-	$<INSTALL_INTERFACE:include/libopenshot-audio> )
+target_include_directories(openshot-audio
+  PUBLIC
+    $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}/include>
+    $<BUILD_INTERFACE:${JUCE_MODULES_PATH}>
+)
 
 # Set SONAME and other library properties
 set_target_properties(openshot-audio
@@ -250,10 +251,13 @@ foreach(j_module IN LISTS JUCE_MODULES)
 endforeach()
 
 # Install library
-INSTALL(TARGETS openshot-audio
-	LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-	ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-	RUNTIME DESTINATION ${CMAKE_INSTALL_LIBDIR} )
+install(TARGETS openshot-audio
+  EXPORT OpenShotAudioTargets
+  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+  INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/libopenshot-audio
+)
 
 # Install manpage
 install(FILES
