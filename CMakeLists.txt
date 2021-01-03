@@ -120,47 +120,6 @@ install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/
 set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
 # Make sure we've picked some build type, default to release
 if(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
-
-# Enable stack-unwinding support in c objects on gcc-based platforms.
-# Failing to do so will cause your program to be terminated when a png
-# or a jpeg exception is thrown on linux or macosx.
-IF (CMAKE_COMPILER_IS_GNUCC)
-	SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fexceptions")
-ENDIF(CMAKE_COMPILER_IS_GNUCC)
-
-IF (WIN32)
-	# Find the base directory of the ASIO SDK (if any)
-	find_path(ASIO_SDK_DIR iasiodrv.h PATHS $ENV{ASIO_SDK_DIR} )
-
-	IF (ASIO_SDK_DIR)
-		MESSAGE("FOUND ASIO_SDK_DIR: ${ASIO_SDK_DIR}")
-		ADD_DEFINITIONS(-DJUCE_ASIO=1)
-		INCLUDE_DIRECTORIES(${ASIO_SDK_DIR})
-	ELSE(ASIO_SDK_DIR)
-		MESSAGE("ASIO_SDK_DIR NOT FOUND")
-		ADD_DEFINITIONS(-DJUCE_ASIO=0)
-	ENDIF (ASIO_SDK_DIR)
-
-	# Tell Visual Studio not to automatically link system DLLs
-	ADD_DEFINITIONS(-DJUCE_DONT_AUTOLINK_TO_WIN32_LIBRARIES)
-
-	# Order here can be important!
-	# For example, winmm.lib must come before kernel32.lib (if linked)
-	# or older 32-bit windows versions will have linking issues for
-	# certain entry points
-	SET(JUCE_PLATFORM_SPECIFIC_LIBRARIES
-                winmm.lib
-                ws2_32.lib
-                wininet.lib
-                version.lib
-                Shlwapi.dll
-		)
-endif()
-
-if(UNIX AND APPLE)
-	SET(JUCE_PLATFORM_SPECIFIC_DIR build/macosx/platform_specific_code)
-	SET(JUCE_PLATFORM_SPECIFIC_LIBRARIES "-framework Carbon -framework Cocoa -framework CoreFoundation -framework CoreAudio -framework CoreMidi -framework IOKit -framework AGL -framework AudioToolbox -framework QuartzCore -lobjc -framework Accelerate")
-	SET(CMAKE_CXX_FLAGS " ${CMAKE_CXX_FLAGS} -flax-vector-conversions")
 	set(CMAKE_BUILD_TYPE "Release")
 endif()
 
@@ -181,11 +140,11 @@ set(JUCE_MODULES
 	juce_events )
 # Convert to list of source files (extension based on OS)
 foreach(j_module IN LISTS JUCE_MODULES)
-	list(APPEND JUCE_SOURCES
-		JuceLibraryCode/include_${j_module}.${SOURCE_EXTENSION} )
+  list(APPEND JUCE_SOURCES
+    JuceLibraryCode/include_${j_module}.${SOURCE_EXTENSION})
 endforeach()
 
-add_library(openshot-audio SHARED ${JUCE_SOURCES} )
+add_library(openshot-audio SHARED ${JUCE_SOURCES})
 
 # Include header directories
 target_include_directories(openshot-audio PUBLIC
@@ -227,9 +186,55 @@ endif()
 find_package(ZLIB REQUIRED)
 target_link_libraries(openshot-audio PUBLIC ZLIB::ZLIB)
 
-target_link_libraries(openshot-audio PUBLIC
-		${CMAKE_DL_LIBS}
-		${JUCE_PLATFORM_SPECIFIC_LIBRARIES} )
+# Enable stack-unwinding support in c objects on gcc-based platforms.
+# Failing to do so will cause your program to be terminated when a png
+# or a jpeg exception is thrown on linux or macosx.
+if(CMAKE_COMPILER_IS_GNUCC)
+  target_compile_options(openshot-audio PUBLIC -fexceptions)
+endif()
+
+if(WIN32)
+	# Find the base directory of the ASIO SDK (if any)
+	find_path(ASIO_SDK_DIR iasiodrv.h PATHS $ENV{ASIO_SDK_DIR} )
+
+	IF (ASIO_SDK_DIR)
+		message(STATUS "FOUND ASIO_SDK_DIR: ${ASIO_SDK_DIR}")
+		target_compile_definitions(openshot-audio PRIVATE JUCE_ASIO=1)
+		target_include_directories(openshot-audio PRIVATE ${ASIO_SDK_DIR})
+  endif()
+
+	# Order here can be important!
+	# For example, winmm.lib must come before kernel32.lib (if linked)
+	# or older 32-bit windows versions will have linking issues for
+	# certain entry points
+	target_link_libraries(openshot-audio PRIVATE
+    winmm.lib
+    ws2_32.lib
+    wininet.lib
+    version.lib
+    Shlwapi.dll
+  )
+endif()
+
+if(APPLE)
+	target_link_libraries(openshot-audio PRIVATE
+    -framework Carbon
+    -framework Cocoa
+    -framework CoreFoundation
+    -framework CoreAudio
+    -framework CoreMidi
+    -framework IOKit
+    -framework AGL
+    -framework AudioToolbox
+    -framework QuartzCore
+    -framework Accelerate
+    objc
+  )
+  target_compile_options(openshot-audio PRIVATE -flax-vector-conversions)
+endif()
+
+# Link the platform dynamic loader
+target_link_libraries(openshot-audio PRIVATE ${CMAKE_DL_LIBS})
 
 # PROCESS SUB-DIRECTORIES
 add_subdirectory(src)
