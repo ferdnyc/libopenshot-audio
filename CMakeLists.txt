@@ -154,15 +154,16 @@ target_include_directories(openshot-audio
 )
 
 # Set SONAME and other library properties
-set_target_properties(openshot-audio
-		PROPERTIES
-		VERSION ${PROJECT_VERSION}
-		SOVERSION ${PROJECT_SO_VERSION}
-		CXX_STANDARD 11
-		CXX_STANDARD_REQUIRED YES
-		CXX_EXTENSIONS OFF
-		MACOSX_RPATH OFF
-		INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/lib")
+set_target_properties(openshot-audio PROPERTIES
+  VERSION ${PROJECT_VERSION}
+  SOVERSION ${PROJECT_SO_VERSION}
+  CXX_STANDARD 11
+  CXX_STANDARD_REQUIRED YES
+  CXX_EXTENSIONS OFF
+  MACOSX_RPATH OFF
+  INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/lib"
+  EXPORT_NAME Audio
+)
 
 # Threading library -- uses IMPORTED target Threads::Threads (since CMake 3.1)
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
@@ -237,11 +238,30 @@ endif()
 # Link the platform dynamic loader
 target_link_libraries(openshot-audio PRIVATE ${CMAKE_DL_LIBS})
 
-# PROCESS SUB-DIRECTORIES
 add_subdirectory(src)
 
+add_library(OpenShot::Audio ALIAS openshot-audio)
 
-#################### INSTALLATION #####################
+###
+### Configuration export
+###
+
+include(CMakePackageConfigHelpers)
+
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/OpenShotAudioConfigVersion.cmake"
+  VERSION "${PROJECT_VERSION}"
+  COMPATIBILITY AnyNewerVersion
+)
+
+configure_package_config_file(OpenShotAudioConfig.cmake.in
+  "${CMAKE_CURRENT_BINARY_DIR}/OpenShotAudioConfig.cmake"
+  INSTALL_DESTINATION lib/cmake/OpenShotAudio/
+)
+
+###
+### INSTALLATION
+###
 
 # Install Header Files
 foreach(j_module IN LISTS JUCE_MODULES)
@@ -263,6 +283,24 @@ install(TARGETS openshot-audio
 install(FILES
   ${CMAKE_CURRENT_SOURCE_DIR}/doc/openshot-audio-test-sound.1
   DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
+)
+
+# Export configuration to build tree
+export(EXPORT OpenShotAudioTargets
+  FILE "${CMAKE_CURRENT_BINARY_DIR}/OpenShotAudioTargets.cmake"
+  NAMESPACE OpenShot::
+)
+
+# Install EXPORT configuration
+install(EXPORT OpenShotAudioTargets
+  FILE OpenShotAudioTargets.cmake
+  NAMESPACE OpenShot::
+  DESTINATION lib/cmake/OpenShotAudio/
+)
+install(FILES
+  "${CMAKE_CURRENT_BINARY_DIR}/OpenShotAudioConfig.cmake"
+  "${CMAKE_CURRENT_BINARY_DIR}/OpenShotAudioConfigVersion.cmake"
+  DESTINATION lib/cmake/OpenShotAudio/
 )
 
 ###
