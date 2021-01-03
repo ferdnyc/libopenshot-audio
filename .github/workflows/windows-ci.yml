@@ -18,13 +18,14 @@ jobs:
       with:
         update: true
         install: >-
-          mingw-w64-x86_64-gcc
+          mingw-w64-x86_64-${{ matrix.compiler }}
           mingw-w64-x86_64-pkgconf
           mingw-w64-x86_64-make
-          python3
-          doxygen
-          make
-          pkgconf
+          mingw-w64-x86_64-cmake
+          mingw-w64-x86_64-extra-cmake-modules
+          mingw-w64-x86_64-python3
+          mingw-w64-x86_64-doxygen
+          mingw-w64-x86_64-graphviz
 
     - name: Build
       shell: msys2 {0}
