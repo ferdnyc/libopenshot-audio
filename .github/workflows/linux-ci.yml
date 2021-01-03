@@ -1,4 +1,4 @@
-name: 'linux-ci'
+name: 'Linux-ci'
 on: [push, pull_request]
 jobs:
   build:
@@ -23,7 +23,7 @@ jobs:
         pushd build
         cmake -B . -S .. \
           -DCMAKE_INSTALL_PREFIX:PATH="dist" \
-          -DCMAKE_BUILD_TYPE="Debug" \
+          -DCMAKE_BUILD_TYPE="Debug" -DCMAKE_VERBOSE_MAKEFILE:BOOL=1 \
           -DAUTO_INSTALL_DOCS=0
         cmake --build . -- VERBOSE=1
         popd
@@ -37,7 +37,7 @@ jobs:
     - name: Install
       run: |
         pushd build
-        cmake --build . --target install -- VERBOSE=1
+        cmake --build . --target install
         popd
 
     - name: Upload build artifact

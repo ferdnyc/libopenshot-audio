@@ -1,10 +1,11 @@
-name: 'macos-ci'
+name: 'macOS-ci'
 on: [push, pull_request]
 jobs:
   build:
     runs-on: macos-latest
     strategy:
       matrix:
+        os: [macos-latest]
         compiler: [gcc, clang]
     steps:
     - name: Check out branch
@@ -12,8 +13,7 @@ jobs:
 
     - name: Install build dependencies
       run: |
-        brew update
-        brew install doxygen
+        brew install doxygen graphviz
 
     - name: Build
       run: |
@@ -21,16 +21,16 @@ jobs:
         -DCMAKE_INSTALL_PREFIX:PATH="build/dist" \
         -DCMAKE_BUILD_TYPE="Debug" \
         -DAUTO_INSTALL_DOCS=0
-        cmake --build build -- VERBOSE=1
+        cmake --build build --verbose
 
     - name: Generate API documentation
       run: cmake --build build --target doc
 
     - name: Install
-      run: cmake --build . --target install -- VERBOSE=1
+      run: cmake --install build --verbose
 
     - name: Upload build artifact
       uses: actions/upload-artifact@v2
       with:
         name: 'OpenShotAudio-${{ matrix.os }}-${{ matrix.compiler }}'
-        path: ${{ github.workspace }}/build/dist/
+        path: build/dist/
