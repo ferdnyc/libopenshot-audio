@@ -1,0 +1,120 @@
+name: 'ci-build-and-release'
+on:
+  push:
+    branches:
+      - ci-artifacts
+  pull_request:
+    branches:
+      - develop
+      - ci-artifacts
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-18.04, ubuntu-20.04, macos-latest, windows-latest]
+        compiler: [gcc, clang]
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v2
+
+      - name: Linux dependencies
+        if: ${{ runner.os == 'linux' }}
+        run: |
+          sudo apt update
+          sudo apt install cmake doxygen graphviz
+          sudo apt install libasound2-dev
+
+      - name: macOS dependencies
+        if: ${{ runner.os == 'macos' }}
+        run: |
+          brew install doxygen graphviz
+
+      - name: Windows dependencies
+        if: ${{ runner.os == 'windows' }}
+        uses: msys2/setup-msys2@v2
+        with:
+          release: false
+          update: true
+          install: >-
+            mingw-w64-x86_64-${{ matrix.compiler }}
+            mingw-w64-x86_64-pkgconf
+            mingw-w64-x86_64-make
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-extra-cmake-modules
+            mingw-w64-x86_64-zlib
+            mingw-w64-x86_64-python3
+            mingw-w64-x86_64-doxygen
+            mingw-w64-x86_64-graphviz
+
+      - name: Select generator
+        uses: haya14busa/action-cond@v1
+        id: generator
+        with:
+          cond: ${{ runner.os == 'Windows' }}
+          if_true: "MinGW Makefiles"
+          if_false: "Unix Makefiles"
+
+      - name: Build
+        run: |
+          cmake -B build -S . -G "${{ steps.generator.outputs.value }}" "-DCMAKE_INSTALL_PREFIX:PATH=build/dist" "-DCMAKE_BUILD_TYPE=Debug" "-DCMAKE_VERBOSE_MAKEFILE:BOOL=1" "-DAUTO_INSTALL_DOCS=0"
+          cmake --build build
+
+      - name: Generate API documentation
+        run: cmake --build build --target doc
+
+      - name: Install
+        run: cmake --install build
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: 'OpenShotAudio-${{ matrix.os }}-${{ matrix.compiler }}'
+          path: '${{ github.workspace }}/build/dist/'
+          retention-days: 2
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [build]
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+    steps:
+      - name: Create release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ci_daily
+          release_name: ci_daily
+          draft: true
+          prerelease: true
+
+  upload:
+    runs-on: ubuntu-latest
+    needs: [build, release]
+    strategy:
+      matrix:
+        os: [ubuntu-18.04, ubuntu-20.04, macos-latest, windows-latest]
+        compiler: [gcc, clang]
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v2
+        with:
+          path: dist/
+      - name: Create archives
+        env:
+          ARCHIVE_NAME: 'OpenShotAudio-${{ matrix.os }}-${{ matrix.compiler }}'
+        working-directory: dist/
+        run: zip -r "${ARCHIVE_NAME}.zip" "${ARCHIVE_NAME}"
+
+      - name: Add files
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.release.outputs.upload_url }}
+          asset_path: 'dist/OpenShotAudio-${{ matrix.os }}-${{ matrix.compiler }}.zip'
+          asset_name: 'OpenShotAudio-${{ matrix.os }}-${{ matrix.compiler }}.zip'
+          asset_content_type: application/zip
