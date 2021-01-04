@@ -35,8 +35,8 @@ jobs:
         if: ${{ runner.os == 'windows' }}
         uses: msys2/setup-msys2@v2
         with:
-          release: false
-          update: true
+          release: true
+          update: false
           install: >-
             mingw-w64-x86_64-${{ matrix.compiler }}
             mingw-w64-x86_64-pkgconf
@@ -45,7 +45,7 @@ jobs:
             mingw-w64-x86_64-extra-cmake-modules
             mingw-w64-x86_64-zlib
             mingw-w64-x86_64-python3
-            mingw-w64-x86_64-doxygen
+            doxygen
             mingw-w64-x86_64-graphviz
 
       - name: Select generator
@@ -62,7 +62,7 @@ jobs:
           cmake --build build
 
       - name: Generate API documentation
-        run: cmake --build build --target doc
+        run: cmake --build build --target OpenShotAudio-doc
 
       - name: Install
         run: cmake --install build

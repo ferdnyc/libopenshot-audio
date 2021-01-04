@@ -450,6 +450,13 @@ if (TARGET ${PROJECT_NAME}-doc)
   if(TARGET doc)
     add_dependencies(doc ${PROJECT_NAME}-doc)
   endif()
+else()
+  # Permit triggering the ${PROJECT_NAME}-doc target build
+  # (as a no-op), instead of erroring out
+  add_custom_target(${PROJECT_NAME}-doc
+    COMMENT
+      "Documentation generator not enabled in build, check dependencies"
+  )
 endif()
 add_feature_info("${PROJECT_NAME} docs" AUDIO_DOCS_ENABLED "Build ${PROJECT_NAME} API documentation")
 
