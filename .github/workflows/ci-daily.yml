@@ -35,28 +35,34 @@ jobs:
         if: ${{ runner.os == 'windows' }}
         uses: msys2/setup-msys2@v2
         with:
-          release: false
-          update: true
+          release: true
+          update: false
           install: >-
             mingw-w64-x86_64-${{ matrix.compiler }}
             mingw-w64-x86_64-pkgconf
             mingw-w64-x86_64-make
             mingw-w64-x86_64-cmake
             mingw-w64-x86_64-extra-cmake-modules
+            mingw-w64-x86_64-zlib
             mingw-w64-x86_64-python3
-            mingw-w64-x86_64-doxygen
+            doxygen
             mingw-w64-x86_64-graphviz
+
+      - name: Select generator
+        uses: haya14busa/action-cond@v1
+        id: generator
+        with:
+          cond: ${{ runner.os == 'Windows' }}
+          if_true: "MinGW Makefiles"
+          if_false: "Unix Makefiles"
 
       - name: Build
         run: |
-          cmake -B build -S . \
-            "-DCMAKE_INSTALL_PREFIX:PATH=build/dist" \
-            "-DCMAKE_BUILD_TYPE=Debug" "-DCMAKE_VERBOSE_MAKEFILE:BOOL=1" \
-            "-DAUTO_INSTALL_DOCS=0"
+          cmake -B build -S . -G "${{ steps.generator.outputs.value }}" "-DCMAKE_INSTALL_PREFIX:PATH=build/dist" "-DCMAKE_BUILD_TYPE=Debug" "-DCMAKE_VERBOSE_MAKEFILE:BOOL=1" "-DAUTO_INSTALL_DOCS=0"
           cmake --build build
 
       - name: Generate API documentation
-        run: cmake --build build --target doc
+        run: cmake --build build --target OpenShotAudio-doc
 
       - name: Install
         run: cmake --install build
