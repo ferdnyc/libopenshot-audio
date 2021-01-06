@@ -4,7 +4,7 @@
 #
 # @section LICENSE
 #
-# Copyright (c) 2008-2016 OpenShot Studios, LLC
+# Copyright (c) 2008-2020 OpenShot Studios, LLC
 # <http://www.openshotstudios.com/>. This file is part of
 # OpenShot Audio Library (libopenshot-audio), an open-source project dedicated
 # to delivering high quality audio editing and playback solutions to the
@@ -26,16 +26,16 @@
 include(GNUInstallDirs)
 
 ############### TEST EXECUTABLES ################
-add_executable(openshot-audio-test-sound Main.cpp)
-target_link_libraries(openshot-audio-test-sound OpenShot::Audio)
-set_target_properties(openshot-audio-test-sound PROPERTIES
+add_executable(openshotaudio-demo Demo.cpp)
+target_link_libraries(openshotaudio-demo OpenShot::Audio)
+set_target_properties(openshotaudio-demo PROPERTIES
 	CXX_STANDARD 11
 	CXX_STANDARD_REQUIRED YES
 	CXX_EXTENSIONS OFF
 	MACOSX_RPATH OFF
 )
 
-# Install Test Executable
-INSTALL(TARGETS openshot-audio-test-sound
+# Install demo target
+install(TARGETS openshotaudio-demo
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )

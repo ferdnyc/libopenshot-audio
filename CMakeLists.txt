@@ -319,7 +319,7 @@ install(TARGETS openshot-audio
 
 # Install manpage
 install(FILES
-  ${CMAKE_CURRENT_SOURCE_DIR}/doc/openshot-audio-test-sound.1
+  ${CMAKE_CURRENT_SOURCE_DIR}/doc/openshotaudio-demo.1
   DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
 )
 
