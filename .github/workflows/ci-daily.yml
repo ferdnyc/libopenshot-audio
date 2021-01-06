@@ -37,7 +37,7 @@ jobs:
         if: ${{ runner.os == 'windows' }}
         uses: msys2/setup-msys2@v2
         with:
-          release: true
+          release: false
           update: false
           install: >-
             mingw-w64-x86_64-${{ matrix.compiler }}
@@ -57,22 +57,36 @@ jobs:
           if_true: "MinGW Makefiles"
           if_false: "Unix Makefiles"
 
+      - name: Select shell for command execution
+        uses: haya14busa/action-cond@v1
+        id: select_shell
+        with:
+          cond: ${{ runner.os == 'Windows' }}
+          if_true: 'msys2 {0}'
+          if_false: bash
+
       - name: Build
+        shell: ${{ steps.select_shell.outputs.value }}
         run: |
-          cmake -B build -S . -G "${{ steps.generator.outputs.value }}" "-DCMAKE_INSTALL_PREFIX:PATH=build/dist" "-DCMAKE_BUILD_TYPE=Debug" "-DCMAKE_VERBOSE_MAKEFILE:BOOL=1" "-DAUDIO_DOCS_AUTO_INSTALL=0"
+          cmake -B build -S . -G "${{ steps.generator.outputs.value }}" "-DCMAKE_INSTALL_PREFIX:PATH=${{ github.workspace }}/dist/OpenShotAudio" "-DCMAKE_BUILD_TYPE=Debug" "-DCMAKE_VERBOSE_MAKEFILE:BOOL=1" "-DAUDIO_DOCS_AUTO_INSTALL=0"
           cmake --build build
 
       - name: Generate API documentation
         run: cmake --build build --target OpenShotAudio-doc
 
-      - name: Install
-        run: cmake --install build
+      - name: Install and zip
+        shell: ${{ steps.select_shell.outputs.value }}
+        run: |
+          cmake --install build
+          pushd dist
+          zip -rm "OpenShotAudio.zip" "OpenShotAudio"
+          popd
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v2
         with:
           name: 'OpenShotAudio-${{ matrix.os }}-${{ matrix.compiler }}'
-          path: '${{ github.workspace }}/build/dist/'
+          path: '${{ github.workspace }}/build/dist/OpenShotAudio.zip'
 
   release:
     runs-on: ubuntu-latest
@@ -103,15 +117,11 @@ jobs:
         os: [ubuntu-18.04, ubuntu-20.04, macos-latest, windows-latest]
         compiler: [gcc]
     steps:
-      - name: Download all artifacts
+      - name: Download our artifact
         uses: actions/download-artifact@v2
         with:
+          name: 'OpenShotAudio-${{ matrix.os }}-${{ matrix.compiler }}'
           path: dist/
-      - name: Create archives
-        env:
-          ARCHIVE_NAME: 'OpenShotAudio-${{ matrix.os }}-${{ matrix.compiler }}'
-        working-directory: dist/
-        run: zip -r "${ARCHIVE_NAME}.zip" "${ARCHIVE_NAME}"
 
       - name: Add files
         uses: actions/upload-release-asset@v1
