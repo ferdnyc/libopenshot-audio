@@ -73,7 +73,6 @@ jobs:
         with:
           name: 'OpenShotAudio-${{ matrix.os }}-${{ matrix.compiler }}'
           path: '${{ github.workspace }}/build/dist/'
-          retention-days: 2
 
   release:
     runs-on: ubuntu-latest
@@ -81,15 +80,16 @@ jobs:
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
-      - name: Create release
+      - name: Recreate latest CI release
         id: create_release
-        uses: actions/create-release@v1
+        uses: GongT/actions-recreate-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ci_daily
-          release_name: ci_daily
-          draft: true
+          tag_name: ci_latest
+          release_name: Continuous Integration - latest builds
+          body: Snapshot of ${{ github.ref }}.
+          draft: false
           prerelease: true
 
   upload:
