@@ -80,6 +80,9 @@ jobs:
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
+        # action-recreate-release needs access to .git/refs/tags
+      - name: Check out branch
+        uses: actions/checkout@v2
       - name: Recreate latest CI release
         id: create_release
         uses: GongT/actions-recreate-release@v1
