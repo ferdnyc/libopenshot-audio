@@ -9,24 +9,33 @@ on:
       - ci-artifacts
 
 jobs:
-  build:
+  config:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ubuntu-18.04, ubuntu-20.04, macos-latest, windows-latest]
         compiler: [gcc]
-    env:
-      CC: ${{ matrix.compiler }}
-      RUNSHELL: ${{ steps.select_shell.outputs.value }}
+    outputs:
+      shell: ${{ steps.select_shell.outputs.value }}
     steps:
       - name: Select shell for command execution
         uses: haya14busa/action-cond@v1
         id: select_shell
         with:
           cond: ${{ runner.os == 'Windows' }}
-          if_true: 'msys2 -c'
-          if_false: 'bash -c'
+          if_true: 'msys2 {0}'
+          if_false: bash
 
+  build:
+    runs-on: ${{ matrix.os }}
+    needs: [config]
+    strategy:
+      matrix:
+        os: [ubuntu-18.04, ubuntu-20.04, macos-latest, windows-latest]
+        compiler: [gcc]
+    env:
+      CC: ${{ matrix.compiler }}
+    steps:
       - name: Select CMake generator
         uses: haya14busa/action-cond@v1
         id: generator
@@ -67,17 +76,20 @@ jobs:
             doxygen
 
       - name: Build
+        shell: ${{ needs.config.outputs.shell }}
         run: |
-          $RUNSHELL 'cmake -B build -S . -G "${{ steps.generator.outputs.value }}" "-DCMAKE_INSTALL_PREFIX:PATH=${{ github.workspace }}/dist/OpenShotAudio" "-DCMAKE_BUILD_TYPE=Debug" "-DCMAKE_VERBOSE_MAKEFILE:BOOL=1" "-DAUDIO_DOCS_AUTO_INSTALL=0"'
+          cmake -B build -S . -G "${{ steps.generator.outputs.value }}" "-DCMAKE_INSTALL_PREFIX:PATH=${{ github.workspace }}/dist/OpenShotAudio" "-DCMAKE_BUILD_TYPE=Debug" "-DCMAKE_VERBOSE_MAKEFILE:BOOL=1" "-DAUDIO_DOCS_AUTO_INSTALL=0"
 
-          $RUNSHELL'cmake --build build'
+          cmake --build build
 
       - name: Generate API documentation
-        run: $RUNSHELL 'cmake --build build --target OpenShotAudio-doc'
+        shell: ${{ needs.config.outputs.shell }}
+        run: cmake --build build --target OpenShotAudio-doc
 
       - name: Install and zip
+        shell: ${{ needs.config.outputs.shell }}
         run: |
-          $RUNSHELL 'cmake --install build'
+          cmake --install build
           cd dist
           zip -rm "OpenShotAudio.zip" "OpenShotAudio"
 
