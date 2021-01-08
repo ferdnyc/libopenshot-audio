@@ -28,10 +28,9 @@ jobs:
 
       - name: Linux dependencies
         if: ${{ runner.os == 'linux' }}
-        run: |
-          sudo apt update
-          sudo apt install cmake clang doxygen graphviz
-          sudo apt install libasound2-dev
+        run: >-
+          sudo apt update;
+          sudo apt install cmake clang libasound2-dev doxygen graphviz
 
       - name: macOS dependencies
         if: ${{ runner.os == 'macos' }}
@@ -47,9 +46,9 @@ jobs:
           install: >-
             mingw-w64-x86_64-gcc
             mingw-w64-x86_64-clang
-            mingw-w64-x86_64-pkgconf
             mingw-w64-x86_64-make
             mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-pkgconf
             mingw-w64-x86_64-zlib
             mingw-w64-x86_64-python3
             doxygen
@@ -58,8 +57,12 @@ jobs:
         if: ${{ runner.os != 'windows' }}
         run: |
           if [ "X${{ runner.os }}X${{ matrix.compiler }}X" == "XmacOSXclangX" ]; then
-            export CMAKE_EXTRA="-DCMAKE_EXE_LINKER_FLAGS=-stdlib=libc++ -DCMAKE_SHARED_LINKER_FLAGS=-stdlib=libc++ -DCMAKE_OSX_DEPLOYMENT_TARGET=10.9"; fi
-          if [ "x${{ matrix.compiler }}" == "xgcc" ]; then export CXX=g++; else export CXX=clang++; fi
+            export CMAKE_EXTRA="-DCMAKE_EXE_LINKER_FLAGS=-stdlib=libc++ -DCMAKE_SHARED_LINKER_FLAGS=-stdlib=libc++ -DCMAKE_OSX_DEPLOYMENT_TARGET=10.9";
+          fi
+          if [ "x${{ matrix.compiler }}" == "xgcc" ]; then
+            export CC=gcc CXX=g++;
+            else export CC=clang CXX=clang++;
+          fi
           cmake -B build -S . -DCMAKE_INSTALL_PREFIX:PATH="${{ github.workspace }}/dist" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_VERBOSE_MAKEFILE:BOOL=1 -DAUDIO_DOCS_AUTO_INSTALL=0 ${CMAKE_EXTRA}
           cmake --build build
           cmake --build build --target OpenShotAudio-doc
@@ -70,8 +73,11 @@ jobs:
         if: ${{ runner.os == 'windows' }}
         shell: msys2 {0}
         run: |
-          if [ "x${{ matrix.compiler }}" == "xgcc" ]; then export COMPILE_ARG="-DCMAKE_CXX_COMPILER=g++"; else export COMPILE_ARG="-DCMAKE_CXX_COMPILER=clang++"; fi
-          cmake -B build -S . -G "MinGW Makefiles" "-DCMAKE_INSTALL_PREFIX:PATH=${{ github.workspace }}/dist" "-DCMAKE_BUILD_TYPE=Debug" "-DCMAKE_VERBOSE_MAKEFILE:BOOL=1" "-DAUDIO_DOCS_AUTO_INSTALL=0" ${COMPILE_ARG}
+          if [ "x${{ matrix.compiler }}" == "xgcc" ]; then
+            export CC=gcc CXX=g++;
+            else export CC=clang CXX=clang++;
+          fi
+          cmake -B build -S . -G "MinGW Makefiles" "-DCMAKE_INSTALL_PREFIX:PATH=${{ github.workspace }}/dist" "-DCMAKE_BUILD_TYPE=Debug" "-DCMAKE_VERBOSE_MAKEFILE:BOOL=1" "-DAUDIO_DOCS_AUTO_INSTALL=0"
           cmake --build build
           cmake --install build
           zip -rm OpenShotAudio.zip dist
