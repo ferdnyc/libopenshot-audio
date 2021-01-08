@@ -15,7 +15,11 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-18.04, ubuntu-20.04, macos-latest, windows-latest]
-        compiler: [gcc]
+        compiler: [gcc, clang]
+        exclude:
+          # Windows clang isn't behaving so far
+          - os: windows-latest
+            compiler: clang
     env:
       CC: ${{ matrix.compiler }}
     steps:
@@ -26,7 +30,7 @@ jobs:
         if: ${{ runner.os == 'linux' }}
         run: |
           sudo apt update
-          sudo apt install cmake doxygen graphviz
+          sudo apt install cmake clang doxygen graphviz
           sudo apt install libasound2-dev
 
       - name: macOS dependencies
@@ -41,11 +45,11 @@ jobs:
           release: false
           update: false
           install: >-
-            mingw-w64-x86_64-${{ matrix.compiler }}
+            mingw-w64-x86_64-gcc
+            mingw-w64-x86_64-clang
             mingw-w64-x86_64-pkgconf
             mingw-w64-x86_64-make
             mingw-w64-x86_64-cmake
-            mingw-w64-x86_64-extra-cmake-modules
             mingw-w64-x86_64-zlib
             mingw-w64-x86_64-python3
             doxygen
@@ -53,28 +57,30 @@ jobs:
       - name: Build (Unix)
         if: ${{ runner.os != 'windows' }}
         run: |
-          cmake -B build -S . -DCMAKE_INSTALL_PREFIX:PATH="${{ github.workspace }}/dist/OpenShotAudio" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_VERBOSE_MAKEFILE:BOOL=1 -DAUDIO_DOCS_AUTO_INSTALL=0
+          if [ "X${{ runner.os }}X${{ matrix.compiler }}X" == "XmacOSXclangX" ]; then
+            export CMAKE_EXTRA="-DCMAKE_EXE_LINKER_FLAGS=-stdlib=libc++ -DCMAKE_SHARED_LINKER_FLAGS=-stdlib=libc++ -DCMAKE_OSX_DEPLOYMENT_TARGET=10.9"; fi
+          if [ "x${{ matrix.compiler }}" == "xgcc" ]; then export CXX=g++; else export CXX=clang++; fi
+          cmake -B build -S . -DCMAKE_INSTALL_PREFIX:PATH="${{ github.workspace }}/dist" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_VERBOSE_MAKEFILE:BOOL=1 -DAUDIO_DOCS_AUTO_INSTALL=0 ${CMAKE_EXTRA}
           cmake --build build
           cmake --build build --target OpenShotAudio-doc
           cmake --install build
-          cd dist
-          zip -rm "OpenShotAudio.zip" "OpenShotAudio"
+          zip -rm OpenShotAudio.zip dist
 
       - name: Build (Windows)
         if: ${{ runner.os == 'windows' }}
         shell: msys2 {0}
         run: |
-          cmake -B build -S . -G "MinGW Makefiles" "-DCMAKE_INSTALL_PREFIX:PATH=${{ github.workspace }}/dist/OpenShotAudio" "-DCMAKE_BUILD_TYPE=Debug" "-DCMAKE_VERBOSE_MAKEFILE:BOOL=1" "-DAUDIO_DOCS_AUTO_INSTALL=0"
+          if [ "x${{ matrix.compiler }}" == "xgcc" ]; then export COMPILE_ARG="-DCMAKE_CXX_COMPILER=g++"; else export COMPILE_ARG="-DCMAKE_CXX_COMPILER=clang++"; fi
+          cmake -B build -S . -G "MinGW Makefiles" "-DCMAKE_INSTALL_PREFIX:PATH=${{ github.workspace }}/dist" "-DCMAKE_BUILD_TYPE=Debug" "-DCMAKE_VERBOSE_MAKEFILE:BOOL=1" "-DAUDIO_DOCS_AUTO_INSTALL=0" ${COMPILE_ARG}
           cmake --build build
           cmake --install build
-          cd dist
-          zip -rm "OpenShotAudio.zip" "OpenShotAudio"
+          zip -rm OpenShotAudio.zip dist
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v2
         with:
           name: 'OpenShotAudio-${{ matrix.os }}-${{ matrix.compiler }}'
-          path: '${{ github.workspace }}/dist/OpenShotAudio.zip'
+          path: '${{ github.workspace }}/OpenShotAudio.zip'
 
   release:
     runs-on: ubuntu-latest
@@ -103,13 +109,17 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-18.04, ubuntu-20.04, macos-latest, windows-latest]
-        compiler: [gcc]
+        compiler: [gcc, clang]
+        exclude:
+          # Windows clang isn't behaving so far
+          - os: windows-latest
+            compiler: clang
     steps:
       - name: Download our artifact
         uses: actions/download-artifact@v2
         with:
           name: 'OpenShotAudio-${{ matrix.os }}-${{ matrix.compiler }}'
-          path: dist/
+          path: ${{ github.workspace }}
 
       - name: Add files
         uses: actions/upload-release-asset@v1
@@ -117,6 +127,6 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           upload_url: ${{ needs.release.outputs.upload_url }}
-          asset_path: 'dist/OpenShotAudio.zip'
+          asset_path: 'OpenShotAudio.zip'
           asset_name: 'OpenShotAudio-${{ matrix.os }}-${{ matrix.compiler }}.zip'
           asset_content_type: application/zip
