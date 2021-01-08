@@ -26,6 +26,12 @@
 
 cmake_minimum_required(VERSION 3.1...3.14 FATAL_ERROR)
 
+get_directory_property(_hasParent PARENT_DIRECTORY)
+if(_hasParent)
+  set(SUBDIR_BUILD TRUE)
+endif()
+
+if(NOT SUBDIR_BUILD)
 message("\
 -----------------------------------------------------------------
           Welcome to the OpenShot Build System!
@@ -35,6 +41,7 @@ inform you of any missing files or other issues.
 
 For more information, please visit <http://www.openshot.org/>.
 -----------------------------------------------------------------")
+endif()
 
 ################ ADD CMAKE MODULES ##################
 set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
@@ -114,13 +121,19 @@ set(JUCE_MODULES_PATH "${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/modules" CACH
     "Location of the JUCE source code 'modules' directory")
 add_feature_info("JUCE module path" TRUE "Loading modules from ${JUCE_MODULES_PATH}")
 
-########## Configure headers ##############
+########## Configure destinations ##############
+if(SUBDIR_BUILD AND DEFINED CACHE{OPENSHOT_INCLUDE_DIRECTORY})
+  set(OPENSHOT_AUDIO_INCLUDE_DIRECTORY
+    "${OPENSHOT_INCLUDE_DIRECTORY}"
+  )
+else()
 set(OPENSHOT_AUDIO_INCLUDE_DIRECTORY
   "${CMAKE_INSTALL_INCLUDEDIR}/openshot"
   CACHE BOOL "Header install destination (relative to <INSTALL_PREFIX>)"
 )
 add_feature_info("Header install path" TRUE
   "Installing headers to <PREFIX>/${OPENSHOT_AUDIO_INCLUDE_DIRECTORY}")
+endif()
 
 # Generate our templated includes
 configure_file(include/JuceHeader.h.in include/JuceHeader.h @ONLY)
@@ -179,8 +192,9 @@ set_target_properties(openshot-audio PROPERTIES
   CXX_STANDARD 11
   CXX_STANDARD_REQUIRED YES
   CXX_EXTENSIONS OFF
-  MACOSX_RPATH OFF
-  INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/lib"
+  # MACOSX_RPATH OFF
+  # INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/lib"
+  INSTALL_RPATH_USE_LINK_PATH TRUE
   EXPORT_NAME Audio
 )
 
@@ -284,18 +298,20 @@ endif()
 ### Configuration export
 ###
 
-include(CMakePackageConfigHelpers)
+if(NOT SUBDIR_BUILD)
+  include(CMakePackageConfigHelpers)
 
-write_basic_package_version_file(
-  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
-  VERSION "${PROJECT_VERSION}"
-  COMPATIBILITY AnyNewerVersion
-)
+  write_basic_package_version_file(
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+    VERSION "${PROJECT_VERSION}"
+    COMPATIBILITY AnyNewerVersion
+  )
 
-configure_package_config_file(Config.cmake.in
-  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
-  INSTALL_DESTINATION lib/cmake/${PROJECT_NAME}/
-)
+  configure_package_config_file(Config.cmake.in
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+    INSTALL_DESTINATION lib/cmake/${PROJECT_NAME}/
+  )
+endif()
 
 ###
 ### INSTALLATION
@@ -308,26 +324,28 @@ foreach(j_module IN LISTS JUCE_MODULES)
     FILES_MATCHING PATTERN "*.h" )
 endforeach()
 
-# Install library
-install(TARGETS openshot-audio
-  EXPORT ${PROJECT_NAME}Targets
-  LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
-  RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
-  INCLUDES DESTINATION ${OPENSHOT_AUDIO_INCLUDE_DIRECTORY}
-)
+if(NOT SUBDIR_BUILD)
 
-# Install manpage
-install(FILES
-  ${CMAKE_CURRENT_SOURCE_DIR}/doc/openshotaudio-demo.1
-  DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
-)
+  # Install library
+  install(TARGETS openshot-audio
+    EXPORT ${PROJECT_NAME}Targets
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    INCLUDES DESTINATION ${OPENSHOT_AUDIO_INCLUDE_DIRECTORY}
+  )
 
-# Export configuration to build tree
-export(EXPORT ${PROJECT_NAME}Targets
-  FILE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Targets.cmake"
-  NAMESPACE OpenShot::
-)
+  # Install manpage
+  install(FILES
+    ${CMAKE_CURRENT_SOURCE_DIR}/doc/openshotaudio-demo.1
+    DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
+  )
+
+  # Export configuration to build tree
+  export(EXPORT ${PROJECT_NAME}Targets
+    FILE "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Targets.cmake"
+    NAMESPACE OpenShot::
+  )
 
 # Install EXPORT configuration
 install(EXPORT ${PROJECT_NAME}Targets
@@ -340,6 +358,7 @@ install(FILES
   "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
   DESTINATION lib/cmake/${PROJECT_NAME}/
 )
+endif()
 
 ###
 ### DOCUMENTATION
@@ -506,6 +525,7 @@ else()
 endif()
 add_feature_info("${PROJECT_NAME} docs" AUDIO_DOCS_ENABLED "Build ${PROJECT_NAME} API documentation")
 
+if(NOT SUBDIR_BUILD)
 ###
 ### PRINT FEATURE SUMMARY
 ###
@@ -513,3 +533,5 @@ feature_summary(WHAT ALL
   INCLUDE_QUIET_PACKAGES
   FATAL_ON_MISSING_REQUIRED_PACKAGES
   DESCRIPTION "${PROJECT_NAME} build configuration:")
+endif()
+
