@@ -22,11 +22,12 @@ jobs:
         compiler:
           - { cc: gcc,   cxx: g++     }
           - { cc: clang, cxx: clang++ }
-        defaults:
-          shell: ${{ matrix.sys.shell }}
+    defaults:
+      run:
+        shell: ${{ matrix.sys.shell }}
     env:
       CC:  ${{ matrix.compiler.cc }}
-      CXX: ${{ matrix.compiler.cxx }
+      CXX: ${{ matrix.compiler.cxx }}
     steps:
       - name: Check out source branch
         uses: actions/checkout@v2
