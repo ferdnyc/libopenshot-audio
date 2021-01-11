@@ -22,6 +22,10 @@ jobs:
         compiler:
           - { cc: gcc,   cxx: g++     }
           - { cc: clang, cxx: clang++ }
+        exclude:
+            # Windows clang isn't being our friend
+          - sys: { os: windows-latest, shell: 'msys2 {0}' }
+            compiler: { cc: clang, cxx: clang++ }
     defaults:
       run:
         shell: ${{ matrix.sys.shell }}
@@ -95,7 +99,7 @@ jobs:
     outputs:
       upload_url: ${{ steps.create_release.outputs.upload_url }}
     steps:
-        # action-recreate-release needs access to .git/refs/tags
+        # actions-recreate-release needs access to .git/refs/tags
       - name: Check out branch
         uses: actions/checkout@v2
       - name: Recreate latest CI release
@@ -117,14 +121,17 @@ jobs:
       matrix:
         os: [ubuntu-18.04, ubuntu-20.04, macos-latest, windows-latest]
         compiler: [gcc, clang]
+        exclude:
+          - os: windows-latest
+            compiler: clang
     steps:
       - name: Download our artifact
         uses: actions/download-artifact@v2
         with:
           name: 'OpenShotAudio-${{ matrix.os }}-${{ matrix.compiler }}'
-          path: ${{ github.workspace }}
+          path: '${{ github.workspace }}'
 
-      - name: Add files
+      - name: Attach artifact to release
         uses: actions/upload-release-asset@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
