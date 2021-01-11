@@ -11,31 +11,25 @@ on:
 jobs:
 
   build:
-    runs-on: ${{ matrix.os }}
+    runs-on: ${{ matrix.sys.os }}
     strategy:
       matrix:
-        os: [ubuntu-18.04, ubuntu-20.04, macos-latest, windows-latest]
-        compiler: [gcc, clang]
-        exclude:
-          # Windows clang isn't behaving so far
-          - os: windows-latest
-            compiler: clang
+        sys:
+          - { os: ubuntu-18.04,   shell: bash        }
+          - { os: ubuntu-20.04,   shell: bash        }
+          - { os: macos-latest,   shell: bash        }
+          - { os: windows-latest, shell: 'msys2 {0}' }
+        compiler:
+          - { cc: gcc,   cxx: g++     }
+          - { cc: clang, cxx: clang++ }
+        defaults:
+          shell: ${{ matrix.sys.shell }}
     env:
-      CC: ${{ matrix.compiler }}
+      CC:  ${{ matrix.compiler.cc }}
+      CXX: ${{ matrix.compiler.cxx }
     steps:
-      - name: Check out branch
+      - name: Check out source branch
         uses: actions/checkout@v2
-
-      - name: Linux dependencies
-        if: ${{ runner.os == 'linux' }}
-        run: >-
-          sudo apt update;
-          sudo apt install cmake clang libasound2-dev doxygen graphviz
-
-      - name: macOS dependencies
-        if: ${{ runner.os == 'macos' }}
-        run: |
-          brew install doxygen
 
       - name: Windows dependencies
         if: ${{ runner.os == 'windows' }}
@@ -53,39 +47,40 @@ jobs:
             mingw-w64-x86_64-python3
             doxygen
 
-      - name: Build (Unix)
-        if: ${{ runner.os != 'windows' }}
-        run: |
-          if [ "X${{ runner.os }}X${{ matrix.compiler }}X" == "XmacOSXclangX" ]; then
-            export CMAKE_EXTRA="-DCMAKE_EXE_LINKER_FLAGS=-stdlib=libc++ -DCMAKE_SHARED_LINKER_FLAGS=-stdlib=libc++ -DCMAKE_OSX_DEPLOYMENT_TARGET=10.9";
-          fi
-          if [ "x${{ matrix.compiler }}" == "xgcc" ]; then
-            export CC=gcc CXX=g++;
-            else export CC=clang CXX=clang++;
-          fi
-          cmake -B build -S . -DCMAKE_INSTALL_PREFIX:PATH="${{ github.workspace }}/dist" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_VERBOSE_MAKEFILE:BOOL=1 -DAUDIO_DOCS_AUTO_INSTALL=0 ${CMAKE_EXTRA}
-          cmake --build build
-          cmake --build build --target OpenShotAudio-doc
-          cmake --install build
-          zip -rm OpenShotAudio.zip dist
+      - name: macOS dependencies
+        if: ${{ runner.os == 'macos' }}
+        run: brew install doxygen
 
-      - name: Build (Windows)
-        if: ${{ runner.os == 'windows' }}
-        shell: msys2 {0}
+      - name: Linux dependencies
+        if: ${{ runner.os == 'linux' }}
+        run: >-
+          sudo apt update;
+          sudo apt install cmake clang libasound2-dev doxygen graphviz
+
+      - name: Build
         run: |
-          if [ "x${{ matrix.compiler }}" == "xgcc" ]; then
-            export CC=gcc CXX=g++;
-            else export CC=clang CXX=clang++;
+          if [ "_${{ runner.os }}_${{ matrix.compiler.cc }}" == "_macOS_clang" ]; then
+            export CMAKE_EXTRA="${CMAKE_EXTRA} -DCMAKE_EXE_LINKER_FLAGS=-stdlib=libc++ -DCMAKE_SHARED_LINKER_FLAGS=-stdlib=libc++ -DCMAKE_OSX_DEPLOYMENT_TARGET=10.9";
           fi
-          cmake -B build -S . -G "MinGW Makefiles" "-DCMAKE_INSTALL_PREFIX:PATH=${{ github.workspace }}/dist" "-DCMAKE_BUILD_TYPE=Debug" "-DCMAKE_VERBOSE_MAKEFILE:BOOL=1" "-DAUDIO_DOCS_AUTO_INSTALL=0"
+          if [ "_${{ runner.os }}" == "_Windows" ]; then
+            export CMAKE_EXTRA="-G \"MSYS Makefiles\" ${CMAKE_EXTRA}";
+          fi
+          cmake -B build -S . ${CMAKE_EXTRA} -DCMAKE_INSTALL_PREFIX:PATH="${{ github.workspace }}/dist" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_VERBOSE_MAKEFILE:BOOL=1 -DAUDIO_DOCS_AUTO_INSTALL=0
           cmake --build build
+
+      - name: Generate documentation, on Linux
+        if: ${{ runner.os == 'linux' }}
+        run: cmake --build build --target OpenShotAudio-doc
+
+      - name: Install and export job artifact
+        run: |
           cmake --install build
           zip -rm OpenShotAudio.zip dist
 
       - name: Upload build artifact
         uses: actions/upload-artifact@v2
         with:
-          name: 'OpenShotAudio-${{ matrix.os }}-${{ matrix.compiler }}'
+          name: 'OpenShotAudio-${{ matrix.sys.os }}-${{ matrix.compiler.cc }}'
           path: '${{ github.workspace }}/OpenShotAudio.zip'
 
   release:
@@ -116,10 +111,6 @@ jobs:
       matrix:
         os: [ubuntu-18.04, ubuntu-20.04, macos-latest, windows-latest]
         compiler: [gcc, clang]
-        exclude:
-          # Windows clang isn't behaving so far
-          - os: windows-latest
-            compiler: clang
     steps:
       - name: Download our artifact
         uses: actions/download-artifact@v2
@@ -136,3 +127,4 @@ jobs:
           asset_path: 'OpenShotAudio.zip'
           asset_name: 'OpenShotAudio-${{ matrix.os }}-${{ matrix.compiler }}.zip'
           asset_content_type: application/zip
+
