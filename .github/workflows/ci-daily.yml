@@ -58,15 +58,20 @@ jobs:
           sudo apt update;
           sudo apt install cmake clang libasound2-dev doxygen graphviz
 
+      - name: Select CMake generator
+        uses: haya14busa/action-cond@v1
+        id: generator
+        with:
+          cond: ${{ runner.os == 'Windows' }}
+          if_true: 'MSYS Makefiles'
+          if_false: 'Unix Makefiles'
+
       - name: Build
         run: |
           if [ "_${{ runner.os }}_${{ matrix.compiler.cc }}" == "_macOS_clang" ]; then
             export CMAKE_EXTRA="${CMAKE_EXTRA} -DCMAKE_EXE_LINKER_FLAGS=-stdlib=libc++ -DCMAKE_SHARED_LINKER_FLAGS=-stdlib=libc++ -DCMAKE_OSX_DEPLOYMENT_TARGET=10.9";
           fi
-          if [ "_${{ runner.os }}" == "_Windows" ]; then
-            export CMAKE_EXTRA="-G \"MSYS\ Makefiles\" ${CMAKE_EXTRA}";
-          fi
-          cmake -B build -S . ${CMAKE_EXTRA} -DCMAKE_INSTALL_PREFIX:PATH="$(pwd)/dist" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_VERBOSE_MAKEFILE:BOOL=1 -DAUDIO_DOCS_AUTO_INSTALL=0
+          cmake -B build -S . -G "${{ steps.generator.outputs.value }}" ${CMAKE_EXTRA} -DCMAKE_INSTALL_PREFIX:PATH="$(pwd)/dist" -DCMAKE_BUILD_TYPE=Debug -DCMAKE_VERBOSE_MAKEFILE:BOOL=1 -DAUDIO_DOCS_AUTO_INSTALL=0
           cmake --build build
 
       - name: Generate documentation, on Linux
