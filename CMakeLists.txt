@@ -40,8 +40,8 @@ For more information, please visit <http://www.openshot.org/>.
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/Modules")
 
 ################ PROJECT VERSION ####################
-set(PROJECT_VERSION_FULL "0.2.1-dev1")
-set(PROJECT_SO_VERSION 8)
+set(PROJECT_VERSION_FULL "0.2.0-dev4")
+set(PROJECT_SO_VERSION 7)
 
 # Remove the dash and anything following, to get the #.#.# version for project()
 string(REGEX REPLACE "\-.*$" "" VERSION_NUM "${PROJECT_VERSION_FULL}")
@@ -182,14 +182,6 @@ foreach(j_module IN LISTS JUCE_MODULES)
 endforeach()
 
 add_library(openshot-audio SHARED ${JUCE_SOURCES})
-
-# Define header files, bundling-vs-installing handled automatically
-# (FRAMEWORK builds place them inside the framework dir)
-# set_property(TARGET openshot-audio APPEND
-#   PROPERTY
-#     PUBLIC_HEADER ${_public_headers}
-# )
-# unset(_public_headers)
 
 # Include header directories
 target_include_directories(openshot-audio PUBLIC
