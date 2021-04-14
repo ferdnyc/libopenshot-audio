@@ -48,6 +48,22 @@ to help distinguish between them.
   * <http://doxygen.nl/> (**Executable**)
   * Used to auto-generate the documentation used by libopenshot-audio.
 
+### Python (`python3`)
+  * <https://python.org> (**Executable**)
+  * Used to prepare the source code for Doxygen processing.
+
+### OS-specific dependencies
+
+#### ALSA (`libalsa`) - Required, Linux only
+  * Audio hardware interface library, install with OS package manager
+
+#### ASIO SDK - Optional, Windows only
+  * <https://new.steinberg.net/developers/> ("ASIO SDK" download link) (**Library**)
+  * Optional audio interface library.
+  * Set the `ASIO_SDK_DIR` environment variable to the full path of the `common` subdirectory,
+    after extracting the download.
+  * Example: `ASIO_SDK_DIR="C:\Program Files\asiosdk_2.3.3_2019-06-14\common"`
+
 ## Obtaining Source Code
 
 The first step in installing libopenshot-audio is to obtain the source code.
