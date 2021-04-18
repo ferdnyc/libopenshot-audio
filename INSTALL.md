@@ -1,10 +1,12 @@
 # The OpenShot Audio Library
 
 ## Detailed instructions for your Operating System
+
 Build instructions are available for all three major Operating Systems:
-* [Building libopenshot for Windows](doc/INSTALL-WINDOWS.md)
-* [Building libopenshot for MacOS](doc/INSTALL-MAC.md)
-* [Building libopenshot for Linux](doc/INSTALL-LINUX.md)
+
+*   [Building libopenshot for Windows](doc/INSTALL-WINDOWS.md)
+*   [Building libopenshot for MacOS](doc/INSTALL-MAC.md)
+*   [Building libopenshot for Linux](doc/INSTALL-LINUX.md)
 
 ## Getting Started
 
@@ -40,29 +42,38 @@ Libraries and Executables have been labeled in the list below,
 to help distinguish between them.
 
 ### CMake (`cmake`)
-  * <http://www.cmake.org/> (**Executable**)
-  * Used to automate the generation of Makefiles, check for dependencies,
+
+*   <http://www.cmake.org/> (**Executable**)
+
+*   Used to automate the generation of Makefiles, check for dependencies,
     and is the backbone of libopenshot-audio’s cross-platform build process.
 
 ### Doxygen (`doxygen`)
-  * <http://doxygen.nl/> (**Executable**)
-  * Used to auto-generate the documentation used by libopenshot-audio.
+
+*   <http://doxygen.nl/> (**Executable**)
+*   Used to auto-generate the documentation used by libopenshot-audio.
 
 ### Python (`python3`)
-  * <https://python.org> (**Executable**)
-  * Used to prepare the source code for Doxygen processing.
+
+*   <https://python.org> (**Executable**)
+*   Used to prepare the source code for Doxygen processing.
 
 ### OS-specific dependencies
 
 #### ALSA (`libalsa`) - Required, Linux only
-  * Audio hardware interface library, install with OS package manager
+
+*   Audio hardware interface library, install with OS package manager
 
 #### ASIO SDK - Optional, Windows only
-  * <https://new.steinberg.net/developers/> ("ASIO SDK" download link) (**Library**)
-  * Optional audio interface library.
-  * Set the `ASIO_SDK_DIR` environment variable to the full path of the `common` subdirectory,
+
+*   <https://new.steinberg.net/developers/> ("ASIO SDK" download link) (**Library**)
+
+*   Optional audio interface library.
+
+*   Set the `ASIO_SDK_DIR` environment variable to the full path of the `common` subdirectory,
     after extracting the download.
-  * Example: `ASIO_SDK_DIR="C:\Program Files\asiosdk_2.3.3_2019-06-14\common"`
+
+*   Example: `ASIO_SDK_DIR="C:\Program Files\asiosdk_2.3.3_2019-06-14\common"`
 
 ## Obtaining Source Code
 
@@ -76,6 +87,7 @@ git clone https://github.com/OpenShot/libopenshot-audio.git
 ```
 
 ## Linux Build Instructions (libopenshot-audio)
+
 To compile libopenshot-audio, we need to go through a few additional steps
 to manually build and install it.
 Launch a terminal and enter:
@@ -87,4 +99,3 @@ cmake --build build
 ./build/src/openshot-audio-test-sound  # (This should play a test sound)
 cmake --install build  # (To /usr/local unless CMAKE_INSTALL_PREFIX set)
 ```
-
