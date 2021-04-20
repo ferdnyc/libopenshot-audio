@@ -142,6 +142,8 @@ configure_file(include/AppConfig.h.in include/AppConfig.h @ONLY)
 install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/
 	DESTINATION ${OPENSHOT_AUDIO_INCLUDE_DIRECTORY})
 
+configure_file(libopenshot-audio.nuspec.in libopenshot-audio.nuspec @ONLY)
+
 # Juce requires either DEBUG or NDEBUG to be defined on MacOS.
 # -DNDEBUG is set by cmake for all release configs, so add
 # -DDEBUG for debug builds. We'll do this for all OSes, even
@@ -211,7 +213,6 @@ target_compile_definitions(openshot-audio PUBLIC
   #   CONFIG == "DEBUG" ? "DEBUG" : ""
   $<$<CONFIG:DEBUG>:DEBUG>
 )
-
 
 # Threading library -- uses IMPORTED target (since CMake 3.1)
 set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
@@ -298,20 +299,18 @@ endif()
 ### Configuration export
 ###
 
-if(NOT SUBDIR_BUILD)
-  include(CMakePackageConfigHelpers)
+include(CMakePackageConfigHelpers)
 
-  write_basic_package_version_file(
-    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
-    VERSION "${PROJECT_VERSION}"
-    COMPATIBILITY AnyNewerVersion
-  )
+write_basic_package_version_file(
+  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+  VERSION "${PROJECT_VERSION}"
+  COMPATIBILITY AnyNewerVersion
+)
 
-  configure_package_config_file(Config.cmake.in
-    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
-    INSTALL_DESTINATION lib/cmake/${PROJECT_NAME}/
-  )
-endif()
+configure_package_config_file(Config.cmake.in
+  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+  INSTALL_DESTINATION lib/cmake/${PROJECT_NAME}/
+)
 
 ###
 ### INSTALLATION
@@ -526,12 +525,12 @@ endif()
 add_feature_info("${PROJECT_NAME} docs" AUDIO_DOCS_ENABLED "Build ${PROJECT_NAME} API documentation")
 
 if(NOT SUBDIR_BUILD)
-###
-### PRINT FEATURE SUMMARY
-###
-feature_summary(WHAT ALL
-  INCLUDE_QUIET_PACKAGES
-  FATAL_ON_MISSING_REQUIRED_PACKAGES
-  DESCRIPTION "${PROJECT_NAME} build configuration:")
+  ###
+  ### PRINT FEATURE SUMMARY
+  ###
+  feature_summary(WHAT ALL
+    INCLUDE_QUIET_PACKAGES
+    FATAL_ON_MISSING_REQUIRED_PACKAGES
+    DESCRIPTION "${PROJECT_NAME} build configuration:"
+  )
 endif()
-
