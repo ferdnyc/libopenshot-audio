@@ -1,10 +1,10 @@
 #################### CMakeLists.txt (libopenshot-audio) ######################
+# @file
 # @brief CMake build file for libopenshot-audio (used to generate makefiles)
 # @author Jonathan Thomas <jonathan@openshot.org>
+# @author FeRD (Frank Dana) <ferdnyc@gmail.com>
 #
-# @section LICENSE
-#
-# Copyright (c) 2008-2019 OpenShot Studios, LLC
+# Copyright (c) 2008-2020 OpenShot Studios, LLC
 # <http://www.openshotstudios.com/>. This file is part of
 # OpenShot Audio Library (libopenshot-audio), an open-source project dedicated
 # to delivering high quality audio editing and playback solutions to the
@@ -24,7 +24,7 @@
 # along with OpenShot Audio Library. If not, see <http://www.gnu.org/licenses/>.
 ################################################################################
 
-cmake_minimum_required(VERSION 3.1...3.14 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.1...3.18 FATAL_ERROR)
 
 get_directory_property(_hasParent PARENT_DIRECTORY)
 if(_hasParent)
@@ -44,23 +44,23 @@ For more information, please visit <http://www.openshot.org/>.
 endif()
 
 ################ ADD CMAKE MODULES ##################
-set(CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake/Modules")
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake/Modules")
 
 ################ PROJECT VERSION ####################
-set(PROJECT_VERSION_FULL "0.2.0-dev3")
+set(PROJECT_VERSION_FULL "0.2.0-dev4")
 set(PROJECT_SO_VERSION 7)
 
 # Remove the dash and anything following, to get the #.#.# version for project()
-STRING(REGEX REPLACE "\-.*$" "" VERSION_NUM "${PROJECT_VERSION_FULL}")
+string(REGEX REPLACE "\-.*$" "" VERSION_NUM "${PROJECT_VERSION_FULL}")
 
 ################### SETUP PROJECT ###################
 # This will define the following variables
 # PROJECT_NAME
-# PROJECT_VERSION, libopenshot-audio_VERSION
-# PROJECT_VERSION_MAJOR, libopenshot-audio_VERSION_MAJOR
-# PROJECT_VERSION_MINOR, libopenshot-audio_VERSION_MINOR
-# PROJECT_VERSION_PATCH, libopenshot-audio_VERSION_PATCH
-PROJECT(OpenShotAudio LANGUAGES C CXX VERSION ${VERSION_NUM})
+# PROJECT_VERSION, OpenShotAudio_VERSION
+# PROJECT_VERSION_MAJOR, OpenShotAudio_VERSION_MAJOR
+# PROJECT_VERSION_MINOR, OpenShotAudio_VERSION_MINOR
+# PROJECT_VERSION_PATCH, OpenShotAudio_VERSION_PATCH
+project(OpenShotAudio LANGUAGES C CXX VERSION ${VERSION_NUM})
 
 # JuceHeader.h needs a hexadecimal version number for the project
 if(CMAKE_VERSION VERSION_GREATER 3.13)
@@ -98,7 +98,7 @@ Generating build files for OpenShot with CMake ${CMAKE_VERSION}
 
 
 # Define install paths according to system conventions
-# XXX: This must be AFTER THE PROJECT() COMMAND w/ languages enabled,
+# XXX: This must be AFTER THE project() COMMAND w/ languages enabled,
 #      in order to properly configure CMAKE_INSTALL_LIBDIR path
 include(GNUInstallDirs)
 include(FeatureSummary)
@@ -116,12 +116,21 @@ cmake_dependent_option(
   "Include documentation in the default install"
   ON "ENABLE_AUDIO_DOCS" OFF)  # Default ON if not disabled
 
-# Specify alternative location for JUCE modules (debian has their own)
+# Alternative location for JUCE modules (debian has their own)
 set(JUCE_MODULES_PATH "${CMAKE_CURRENT_SOURCE_DIR}/JuceLibraryCode/modules" CACHE PATH
     "Location of the JUCE source code 'modules' directory")
-add_feature_info("JUCE module path" TRUE "Loading modules from ${JUCE_MODULES_PATH}")
+if(CMAKE_VERSION VERSION_GREATER 3.4 AND IS_ABSOLUTE ${JUCE_MODULES_PATH})
+  # Display path relative to project root
+  file(RELATIVE_PATH _juce_dir ${CMAKE_CURRENT_SOURCE_DIR} ${JUCE_MODULES_PATH})
+else()
+  set(_juce_dir ${JUCE_MODULES_PATH})
+endif()
+string(REGEX REPLACE "/modules$" "" _juce_dir "${_juce_dir}")
+add_feature_info("JUCE path" TRUE "Using JUCE sources from: ${_juce_dir}")
 
-########## Configure destinations ##############
+###
+### Configure destinations
+###
 if(SUBDIR_BUILD AND DEFINED CACHE{OPENSHOT_INCLUDE_DIRECTORY})
   set(OPENSHOT_AUDIO_INCLUDE_DIRECTORY
     "${OPENSHOT_INCLUDE_DIRECTORY}"
@@ -135,40 +144,42 @@ add_feature_info("Header install path" TRUE
   "Installing headers to <PREFIX>/${OPENSHOT_AUDIO_INCLUDE_DIRECTORY}")
 endif()
 
-# Generate our templated includes
-configure_file(include/JuceHeader.h.in include/JuceHeader.h @ONLY)
-configure_file(include/AppConfig.h.in include/AppConfig.h @ONLY)
-# We'll want those installed later
-install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/include/
-	DESTINATION ${OPENSHOT_AUDIO_INCLUDE_DIRECTORY})
-
-configure_file(libopenshot-audio.nuspec.in libopenshot-audio.nuspec @ONLY)
-
-# Juce requires either DEBUG or NDEBUG to be defined on MacOS.
-# -DNDEBUG is set by cmake for all release configs, so add
-# -DDEBUG for debug builds. We'll do this for all OSes, even
-# though only MacOS requires it.
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -DDEBUG")
-# Make sure we've picked some build type, default to release
-if(NOT DEFINED CMAKE_BUILD_TYPE OR CMAKE_BUILD_TYPE STREQUAL "")
-  set(CMAKE_BUILD_TYPE "Release")
+# Generate our custom headers from templates
+configure_file(include/OpenShotAudio.h.in include/OpenShotAudio.h @ONLY)
+if(UNIX AND CMAKE_VERSION VERSION_GREATER 3.14)
+  # Symlink to the old header name, for backwards compatibility
+  file(CREATE_LINK
+    OpenShotAudio.h
+    "${CMAKE_CURRENT_BINARY_DIR}/include/JuceHeader.h"
+    SYMBOLIC
+  )
+else()
+  # We can't symlink it, so just make a copy
+  configure_file(include/OpenShotAudio.h.in include/JuceHeader.h @ONLY)
 endif()
+configure_file(include/AppConfig.h.in include/AppConfig.h @ONLY)
+list(APPEND _extra_headers
+  ${CMAKE_CURRENT_BINARY_DIR}/include/OpenShotAudio.h
+  ${CMAKE_CURRENT_BINARY_DIR}/include/JuceHeader.h
+  ${CMAKE_CURRENT_BINARY_DIR}/include/AppConfig.h
+)
+configure_file(libopenshot-audio.nuspec.in libopenshot-audio.nuspec @ONLY)
 
 # Default extension for source files
 if(UNIX AND APPLE)
-  SET(SOURCE_EXTENSION "mm")
-else ()
-  SET(SOURCE_EXTENSION "cpp")
+  set(SOURCE_EXTENSION "mm")
+else()
+  set(SOURCE_EXTENSION "cpp")
 endif()
 
 # List of modules to build
 set(JUCE_MODULES
-	juce_audio_basics
-	juce_audio_devices
-	juce_audio_formats
-	juce_core
-	juce_data_structures
-	juce_events )
+  juce_audio_basics
+  juce_audio_devices
+  juce_audio_formats
+  juce_core
+  juce_data_structures
+  juce_events )
 # Convert to list of source files (extension based on OS)
 foreach(j_module IN LISTS JUCE_MODULES)
   list(APPEND JUCE_SOURCES
@@ -191,52 +202,23 @@ target_include_directories(openshot-audio
 set_target_properties(openshot-audio PROPERTIES
   VERSION ${PROJECT_VERSION}
   SOVERSION ${PROJECT_SO_VERSION}
-  CXX_STANDARD 11
-  CXX_STANDARD_REQUIRED YES
-  CXX_EXTENSIONS OFF
-  # MACOSX_RPATH OFF
-  # INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/lib"
-  INSTALL_RPATH_USE_LINK_PATH TRUE
-  EXPORT_NAME Audio
+  EXPORT_NAME Audio  # Exports as OpenShot::Audio target
 )
 
-# Some compile flags to propagate to callers
-target_compile_definitions(openshot-audio PUBLIC
-  # Solve a compile error on some systems
-  IGNORE_JUCE_HYPOT=1
-  # For the Ruby bindings
-  HAVE_ISFINITE=1
-  # macOS requires that either DEBUG or NDEBUG be defined.
-  # Release build types already set NDEBUG, we just define
-  # its opposite here.
-  # The generator expression translates to:
-  #   CONFIG == "DEBUG" ? "DEBUG" : ""
-  $<$<CONFIG:DEBUG>:DEBUG>
-)
-
-# Threading library -- uses IMPORTED target (since CMake 3.1)
-set(CMAKE_THREAD_PREFER_PTHREAD TRUE)
-set(THREADS_PREFER_PTHREAD_FLAG TRUE)
-find_package(Threads REQUIRED)
-target_link_libraries(openshot-audio PUBLIC Threads::Threads)
-
-# ALSA (Linux only)
-if(UNIX AND NOT APPLE)
-  find_package(ALSA REQUIRED)
-  if (ALSA_FOUND AND NOT TARGET ALSA::ALSA)
-    # No IMPORTED target in CMake < 3.12, make our own
-    add_library(ALSA::ALSA INTERFACE IMPORTED)
-    set_target_properties(ALSA::ALSA PROPERTIES
-      INTERFACE_INCLUDE_DIRECTORIES ${ALSA_INCLUDE_DIR}
-      INTERFACE_LINK_LIBRARIES ${ALSA_LIBRARIES})
-  endif()
-  target_compile_definitions(openshot-audio PUBLIC LINUX)
-  target_link_libraries(openshot-audio PRIVATE ALSA::ALSA)
+# Require language features we use
+if(CMAKE_VERSION VERSION_GREATER 3.8)
+  target_compile_features(openshot-audio PUBLIC
+    cxx_std_11
+    cxx_range_for
+    cxx_override
+  )
+else()
+  set_target_properties(openshot-audio PROPERTIES
+    CXX_STANDARD 11
+    CXX_STANDARD_REQUIRED YES
+    CXX_EXTENSIONS NO
+  )
 endif()
-
-# ZLIB -- uses IMPORTED target (since CMake 3.1)
-find_package(ZLIB REQUIRED)
-target_link_libraries(openshot-audio PRIVATE ZLIB::ZLIB)
 
 # Enable stack-unwinding support in c objects on gcc-based platforms.
 # Failing to do so will cause your program to be terminated when a png
@@ -245,16 +227,18 @@ if(CMAKE_COMPILER_IS_GNUCC)
   target_compile_options(openshot-audio PUBLIC -fexceptions)
 endif()
 
+# This ends up needing to be defined for consumers wishing to use
+# JUCE classes in SWIG bindings, since some of the target languages
+# (Ruby) have issues dealing with JUCE's use of isFinite()
+target_compile_definitions(openshot-audio INTERFACE HAVE_ISFINITE=1)
+
 if(WIN32)
-  # Find the base directory of the ASIO SDK (if any)
-  find_path(ASIO_SDK_DIR iasiodrv.h PATHS $ENV{ASIO_SDK_DIR} )
-
-  if(ASIO_SDK_DIR)
-    message(STATUS "FOUND ASIO_SDK_DIR: ${ASIO_SDK_DIR}")
-    target_compile_definitions(openshot-audio PRIVATE JUCE_ASIO=1)
-    target_include_directories(openshot-audio PRIVATE ${ASIO_SDK_DIR})
+  # Try to load ASIO SDK
+  find_package(ASIO)
+  if(TARGET ASIO::SDK)
+    target_link_libraries(openshot-audio PRIVATE ASIO::SDK)
+    set(NEED_ASIO TRUE)
   endif()
-
   # Order here can be important!
   # For example, winmm.lib must come before kernel32.lib (if linked)
   # or older 32-bit windows versions will have linking issues for
@@ -269,6 +253,18 @@ if(WIN32)
 endif()
 
 if(APPLE)
+  set_target_properties(openshot-audio PROPERTIES
+    INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/lib"
+    MACOSX_RPATH OFF
+  )
+  target_compile_definitions(openshot-audio PUBLIC
+    # macOS requires that either DEBUG or NDEBUG be defined.
+    # Release build types already set NDEBUG, we just define
+    # its opposite here.
+    # The generator expression translates to:
+    #   CONFIG == "DEBUG" ? "DEBUG" : ""
+    $<$<CONFIG:DEBUG>:DEBUG>
+  )
   target_link_libraries(openshot-audio PRIVATE
     "-framework Carbon"
     "-framework Cocoa"
@@ -280,53 +276,102 @@ if(APPLE)
     "-framework AudioToolbox"
     "-framework QuartzCore"
     "-framework Accelerate"
-    objc
+    "-lobjc"
   )
-  target_compile_options(openshot-audio PRIVATE -flax-vector-conversions)
+  target_compile_options(openshot-audio PRIVATE
+    -flax-vector-conversions)
 endif()
 
-# Link the platform dynamic loader
-target_link_libraries(openshot-audio PRIVATE ${CMAKE_DL_LIBS})
+# ALSA (Linux only)
+if(UNIX AND NOT APPLE)
+  set(NEED_ALSA TRUE)
+  find_package(ALSA REQUIRED)
+  if (ALSA_FOUND AND NOT TARGET ALSA::ALSA)
+    # No IMPORTED target in CMake < 3.12, make our own
+    add_library(ALSA::ALSA INTERFACE IMPORTED)
+    set_target_properties(ALSA::ALSA PROPERTIES
+      INTERFACE_INCLUDE_DIRECTORIES ${ALSA_INCLUDE_DIR}
+      INTERFACE_LINK_LIBRARIES ${ALSA_LIBRARIES})
+  endif()
+  target_compile_definitions(openshot-audio PUBLIC LINUX)
+  target_link_libraries(openshot-audio PUBLIC ALSA::ALSA)
+else()
+  # For EXPORTED Config
+  set(NEED_ALSA FALSE)
+endif()
 
+# ZLIB -- uses IMPORTED target (since CMake 3.1)
+find_package(ZLIB REQUIRED)
+target_link_libraries(openshot-audio PUBLIC ZLIB::ZLIB)
+
+# Link with dynamic loader for platform
+target_link_libraries(openshot-audio PUBLIC ${CMAKE_DL_LIBS})
+
+# Create an alias so our EXPORT target name works internally, as well
+add_library(OpenShot::Audio ALIAS openshot-audio)
+
+# PROCESS SUB-DIRECTORIES
 add_subdirectory(src)
 
-# Alias our EXPORTED name for internal use as well, for consistency
-if(NOT TARGET OpenShot::Audio)
-  add_library(OpenShot::Audio ALIAS openshot-audio)
-endif()
-
 ###
-### Configuration export
+###
+### INSTALLATION
+###
 ###
 
+configure_file(
+  "${PROJECT_SOURCE_DIR}/cmake/Modules/FindASIO.cmake"
+  FindASIO.cmake @ONLY)
+
+# Package the exported targets for external consumers
 include(CMakePackageConfigHelpers)
 
+set(CMAKECONFIG_INSTALL_DIR "lib/cmake/${PROJECT_NAME}"
+  CACHE STRING "install path for CMake configuration")
+
+configure_package_config_file(
+  cmake/Config.cmake.in
+  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+  INSTALL_DESTINATION ${CMAKECONFIG_INSTALL_DIR}
+)
+
+# Write version file for eported config
 write_basic_package_version_file(
-  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+  ${PROJECT_NAME}ConfigVersion.cmake
   VERSION "${PROJECT_VERSION}"
   COMPATIBILITY AnyNewerVersion
 )
 
-configure_package_config_file(Config.cmake.in
-  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
-  INSTALL_DESTINATION lib/cmake/${PROJECT_NAME}/
-)
-
-###
-### INSTALLATION
-###
-
-# Install Header Files
-foreach(j_module IN LISTS JUCE_MODULES)
-  install(DIRECTORY ${JUCE_MODULES_PATH}/${j_module}/
-    DESTINATION ${OPENSHOT_AUDIO_INCLUDE_DIRECTORY}/${j_module}
-    FILES_MATCHING PATTERN "*.h" )
-endforeach()
-
 if(NOT SUBDIR_BUILD)
+  # Export the configuration at install time
+  install(FILES
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
+    "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
+    DESTINATION ${CMAKECONFIG_INSTALL_DIR}
+  )
+
+  # Install all headers
+  install(FILES
+    ${_extra_headers}
+    DESTINATION ${OPENSHOT_AUDIO_INCLUDE_DIRECTORY}
+  )
+
+  foreach(j_module IN LISTS JUCE_MODULES)
+    install(CODE "message(STATUS \"Installing ${j_module} headers\")")
+    install(DIRECTORY ${JUCE_MODULES_PATH}/${j_module}/
+      DESTINATION ${OPENSHOT_AUDIO_INCLUDE_DIRECTORY}/${j_module}
+      FILES_MATCHING PATTERN "*.h" )
+  endforeach()
+
+  # Include our FindASIO module, which will be needed on Windows
+  install(FILES
+    "${PROJECT_SOURCE_DIR}/cmake/Modules/FindASIO.cmake"
+    DESTINATION ${CMAKECONFIG_INSTALL_DIR}
+  )
 
   # Install library
   install(TARGETS openshot-audio
+    COMPONENT Runtime
     EXPORT ${PROJECT_NAME}Targets
     LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
     ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
@@ -337,6 +382,7 @@ if(NOT SUBDIR_BUILD)
   # Install manpage
   install(FILES
     ${CMAKE_CURRENT_SOURCE_DIR}/doc/openshotaudio-demo.1
+    COMPONENT Documentation
     DESTINATION ${CMAKE_INSTALL_MANDIR}/man1
   )
 
@@ -346,17 +392,13 @@ if(NOT SUBDIR_BUILD)
     NAMESPACE OpenShot::
   )
 
-# Install EXPORT configuration
-install(EXPORT ${PROJECT_NAME}Targets
-  FILE ${PROJECT_NAME}Targets.cmake
-  NAMESPACE OpenShot::
-  DESTINATION lib/cmake/${PROJECT_NAME}/
-)
-install(FILES
-  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}Config.cmake"
-  "${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}ConfigVersion.cmake"
-  DESTINATION lib/cmake/${PROJECT_NAME}/
-)
+  # Install EXPORTED configuration
+  install(
+    EXPORT ${PROJECT_NAME}Targets
+    FILE ${PROJECT_NAME}Targets.cmake
+    NAMESPACE OpenShot::
+    DESTINATION ${CMAKECONFIG_INSTALL_DIR}
+  )
 endif()
 
 ###
@@ -370,20 +412,25 @@ if(ENABLE_AUDIO_DOCS AND CMAKE_VERSION VERSION_GREATER 3.11)
   find_package(PythonInterp 3)
   # Find Doxygen (used for documentation)
   find_package(Doxygen)
+endif()
 
-  if(PYTHONINTERP_FOUND AND DOXYGEN_FOUND)
-    message(STATUS "Doxygen found, enabling ${PROJECT_NAME}-doc target")
-    # Pre-process the sources to fix documentation formatting
-    add_custom_target(process-source-files
-        COMMAND ${PYTHON_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/doc/process_source_files.py ${JUCE_MODULES_PATH} "docs"
-        COMMENT "Formatting source code for documentation"
-        VERBATIM )
+if(PYTHONINTERP_FOUND AND DOXYGEN_FOUND)
+  # Pre-process the sources to fix documentation formatting
+  add_custom_target(process-source-files
+    COMMAND
+      ${PYTHON_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/doc/process_source_files.py
+      ${JUCE_MODULES_PATH}
+      "docs"
+    COMMENT "Formatting source code for documentation"
+    VERBATIM
+  )
+  add_feature_info("Docs preprocessing" TRUE "Format API docs (requires Python)")
 
-    # Processed docs are removed on "make clean"
-    set_property(DIRECTORY
-      APPEND PROPERTY
-      ADDITIONAL_MAKE_CLEAN_FILES "docs"
-    )
+  # Processed docs are removed on "make clean"
+  set_property(DIRECTORY
+    APPEND PROPERTY
+      ADDITIONAL_MAKE_CLEAN_FILES "docs" )
 
     set(DOXYGEN_QUIET YES)
     set(DOXYGEN_PROJECT_NAME "OpenShot Audio Library | ${PROJECT_NAME}")
@@ -488,7 +535,6 @@ if(ENABLE_AUDIO_DOCS AND CMAKE_VERSION VERSION_GREATER 3.11)
         add_dependencies(${PROJECT_NAME}-doc process-source-files)
         set(AUDIO_DOCS_ENABLED TRUE)
     endif()
-  endif()
 endif()
 
 # Doxygen was found

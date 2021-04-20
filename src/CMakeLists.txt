@@ -23,19 +23,22 @@
 # You should have received a copy of the GNU General Public License
 # along with OpenShot Audio Library. If not, see <http://www.gnu.org/licenses/>.
 ################################################################################
-include(GNUInstallDirs)
 
-############### TEST EXECUTABLES ################
-add_executable(openshotaudio-demo Demo.cpp)
-target_link_libraries(openshotaudio-demo OpenShot::Audio)
-set_target_properties(openshotaudio-demo PROPERTIES
-	CXX_STANDARD 11
-	CXX_STANDARD_REQUIRED YES
-	CXX_EXTENSIONS OFF
-	MACOSX_RPATH OFF
-)
+add_executable(openshot-audio-demo Main.cpp)
+target_link_libraries(openshot-audio-demo OpenShot::Audio)
 
-# Install demo target
-install(TARGETS openshotaudio-demo
+# Set compile features in ancient CMake (newer releases would
+# make them transitive from the library)
+if(CMAKE_VERSION VERSION_LESS 3.8)
+  set_target_properties(openshot-audio-demo PROPERTIES
+    CXX_STANDARD 11
+    CXX_STANDARD_REQUIRED YES
+    CXX_EXTENSIONS NO
+    MACOSX_RPATH OFF
+  )
+endif()
+
+install(TARGETS openshot-audio-demo
   RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
+
