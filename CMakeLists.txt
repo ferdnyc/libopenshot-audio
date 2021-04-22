@@ -254,8 +254,7 @@ endif()
 
 if(APPLE)
   set_target_properties(openshot-audio PROPERTIES
-    INSTALL_NAME_DIR "${CMAKE_INSTALL_PREFIX}/lib"
-    MACOSX_RPATH OFF
+    MACOSX_RPATH TRUE
   )
   target_compile_definitions(openshot-audio PUBLIC
     # macOS requires that either DEBUG or NDEBUG be defined.
