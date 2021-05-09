@@ -1,13 +1,5 @@
 # The OpenShot Audio Library
 
-## Detailed instructions for your Operating System
-
-Build instructions are available for all three major Operating Systems:
-
-*   [Building libopenshot for Windows](doc/INSTALL-WINDOWS.md)
-*   [Building libopenshot for MacOS](doc/INSTALL-MAC.md)
-*   [Building libopenshot for Linux](doc/INSTALL-LINUX.md)
-
 ## Getting Started
 
 The best way to get started with libopenshot-audio is to
