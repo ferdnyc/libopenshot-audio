@@ -33,27 +33,34 @@ Instructions on how to install these dependencies vary by operating system.
 Libraries and Executables have been labeled in the list below,
 to help distinguish between them.
 
-### CMake (`cmake`)
+### Build dependencies
+
+#### CMake
 
 *   <http://www.cmake.org/> (**Executable**)
 
 *   Used to automate the generation of Makefiles, check for dependencies,
     and is the backbone of libopenshot-audio’s cross-platform build process.
 
-### Doxygen (`doxygen`)
+### Documentation dependencies
+
+Only required if you wish to build a local copy of the API documentation.
+
+#### Doxygen
 
 *   <http://doxygen.nl/> (**Executable**)
 *   Used to auto-generate the documentation used by libopenshot-audio.
 
-### Python (`python3`)
+#### Python
 
 *   <https://python.org> (**Executable**)
 *   Used to prepare the source code for Doxygen processing.
 
 ### OS-specific dependencies
 
-#### ALSA (`libalsa`) - Required, Linux only
+#### ALSA - Required, Linux only
 
+*   `libalsa.so` (**Library**)
 *   Audio hardware interface library, install with OS package manager
 
 #### ASIO SDK - Optional, Windows only
@@ -62,17 +69,24 @@ to help distinguish between them.
 
 *   Optional audio interface library.
 
-*   Set the `ASIO_SDK_DIR` environment variable to the full path of the `common` subdirectory,
-    after extracting the download.
+*   When building, tell CMake where to find the SDK by either:
 
-*   Example: `ASIO_SDK_DIR="C:\Program Files\asiosdk_2.3.3_2019-06-14\common"`
+    1.  Setting the environment variable `ASIO_SDK_DIR`
+        to the full path of the extracted SDK.
+
+        Example: `ASIO_SDK_DIR="C:\Program Files\asiosdk_2.3.3_2019-06-14"`
+
+    2.  Setting the path on the CMake command line, using `ASIO_ROOT`.
+
+        Example:
+        `cmake -DASIO_ROOT="C:\Users\Owner\Downloads\asiosdk_2.3.3_2019-06-14"`
 
 ## Obtaining Source Code
 
 The first step in installing libopenshot-audio is to obtain the source code.
 The source code is available on
 [GitHub](https://github.com/OpenShot/libopenshot-audio).
-Use the following command to obtain the latest source:
+Open a terminal and use the following command to obtain the latest source:
 
 ```sh
 git clone https://github.com/OpenShot/libopenshot-audio.git
@@ -80,14 +94,40 @@ git clone https://github.com/OpenShot/libopenshot-audio.git
 
 ## Linux Build Instructions (libopenshot-audio)
 
-To compile libopenshot-audio, we need to go through a few additional steps
-to manually build and install it.
-Launch a terminal and enter:
+Enter the source directory downloaded by git, and configure the `build` directory:
 
 ```sh
-cd [libopenshot-audio repo folder]
+cd libopenshot-audio
+
+# Add any other configuration to the next command. Some common options:
+#   -DCMAKE_INSTALL_PREFIX=/usr
+#   -DASIO_ROOT="C:\Program Files\ASIO SDK"
 cmake -B build -S .
-cmake --build build
-./build/src/openshot-audio-test-sound  # (This should play a test sound)
-cmake --install build  # (To /usr/local unless CMAKE_INSTALL_PREFIX set)
 ```
+
+Once the build is successfully configured, compile the library:
+
+```sh
+cmake --build build
+```
+
+If there are no errors, you can test the new build using the demo program.
+It will list the audio devices detected on your system, then use the
+default device to play a series of short test tones:
+
+```sh
+./build/src/openshot-audio-demo
+```
+
+If everything is working as expected, you may install the library by running:
+
+```sh
+# (This installs to the default prefix configured in CMake,
+# unless you changed CMAKE_INSTALL_PREFIX above)
+cmake --install build
+```
+
+If your next step is to build libopenshot, installation is optional here.
+libopenshot-audio can be used from the build directory by adding
+`-DOpenShotAudio_ROOT="/path/to/libopenshot-audio/build"`
+to the `cmake` command line, when configuring libopenshot.
